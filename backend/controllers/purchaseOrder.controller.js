@@ -1,0 +1,738 @@
+const { PurchaseOrder, PurchaseRequest, Item, Warehouse, Supplier, User, Category } = require('../models');
+const sendEmail = require('../utils/sendEmail');
+
+// Get all purchase orders (Admin/Manager view)
+exports.getAllPurchaseOrders = async (req, res) => {
+  try {
+    const { status, priority, supplierId } = req.query;
+    
+    const whereClause = {};
+    if (status) whereClause.status = status;
+    if (priority) whereClause.priority = priority;
+    if (supplierId) whereClause.supplierId = supplierId;
+
+    // Role-based access control
+    let accessLevel = 'none';
+    if (req.user.role === 'admin') {
+      accessLevel = 'full'; // Can view all, approve, cancel, edit
+    } else if (req.user.role === 'manager') {
+      accessLevel = 'view'; // Can view all, monitor, but not approve
+    } else if (req.user.role === 'warehouse') {
+      // Warehouse can only see POs assigned to their warehouse
+      // For now, show all but mark as limited access
+      accessLevel = 'limited';
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Insufficient permissions to view purchase orders.'
+      });
+    }
+
+    const purchaseOrders = await PurchaseOrder.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: PurchaseRequest,
+          as: 'purchaseRequest',
+          attributes: ['id', 'prNumber', 'urgencyLevel']
+        },
+        {
+          model: Item,
+          as: 'item',
+          include: [{ model: Category, as: 'category' }]
+        },
+        {
+          model: Warehouse,
+          as: 'warehouse'
+        },
+        {
+          model: Supplier,
+          as: 'supplier'
+        },
+        {
+          model: User,
+          as: 'createdBy',
+          attributes: ['id', 'name', 'email']
+        },
+        {
+          model: User,
+          as: 'approvedBy',
+          attributes: ['id', 'name', 'email']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: purchaseOrders,
+      count: purchaseOrders.length,
+      accessLevel: accessLevel, // Frontend can use this to show/hide buttons
+      userRole: req.user.role
+    });
+
+  } catch (error) {
+    console.error('Error fetching purchase orders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch purchase orders',
+      error: error.message
+    });
+  }
+};
+
+// Get supplier's purchase orders (Supplier view)
+exports.getSupplierPurchaseOrders = async (req, res) => {
+  try {
+    const { status } = req.query;
+    
+    // Find supplier by user ID
+    const supplier = await Supplier.findOne({
+      where: { userId: req.user.id }
+    });
+
+    if (!supplier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Supplier profile not found'
+      });
+    }
+
+    const whereClause = { supplierId: supplier.id };
+    if (status) whereClause.status = status;
+
+    const purchaseOrders = await PurchaseOrder.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: PurchaseRequest,
+          as: 'purchaseRequest',
+          attributes: ['id', 'prNumber', 'urgencyLevel', 'reason']
+        },
+        {
+          model: Item,
+          as: 'item',
+          include: [{ model: Category, as: 'category' }]
+        },
+        {
+          model: Warehouse,
+          as: 'warehouse'
+        },
+        {
+          model: User,
+          as: 'createdBy',
+          attributes: ['id', 'name', 'email']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: purchaseOrders,
+      count: purchaseOrders.length,
+      supplier: {
+        id: supplier.id,
+        name: supplier.name,
+        email: supplier.email
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching supplier purchase orders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch purchase orders',
+      error: error.message
+    });
+  }
+};
+
+// Supplier responds to PO (Accept/Reject/Request Delay)
+exports.respondToPurchaseOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action, notes, proposedDeliveryDate } = req.body;
+    
+    // Find supplier by user ID
+    const supplier = await Supplier.findOne({
+      where: { userId: req.user.id }
+    });
+
+    if (!supplier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Supplier profile not found'
+      });
+    }
+
+    // Find PO and verify it belongs to this supplier
+    const purchaseOrder = await PurchaseOrder.findOne({
+      where: { 
+        id: id,
+        supplierId: supplier.id 
+      },
+      include: [
+        {
+          model: Item,
+          as: 'item'
+        },
+        {
+          model: Warehouse,
+          as: 'warehouse'
+        }
+      ]
+    });
+
+    if (!purchaseOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Purchase order not found or access denied'
+      });
+    }
+
+    // Check if PO is in valid status for response
+    if (!['draft', 'sent'].includes(purchaseOrder.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Purchase order cannot be modified in current status'
+      });
+    }
+
+    let updateData = {
+      notes: notes || purchaseOrder.notes
+    };
+
+    let emailSubject = '';
+    let emailContent = '';
+
+    switch (action) {
+      case 'accept':
+        updateData.status = 'acknowledged';
+        updateData.actualDeliveryDate = proposedDeliveryDate || purchaseOrder.expectedDeliveryDate;
+        emailSubject = `PO ${purchaseOrder.poNumber} - ACCEPTED`;
+        emailContent = `
+          Purchase Order ${purchaseOrder.poNumber} has been ACCEPTED by ${supplier.name}.
+          
+          Order Details:
+          - Item: ${purchaseOrder.item.name}
+          - Quantity: ${purchaseOrder.orderedQuantity}
+          - Expected Delivery: ${updateData.actualDeliveryDate}
+          
+          Supplier Notes: ${notes || 'None'}
+        `;
+        break;
+
+      case 'reject':
+        updateData.status = 'cancelled';
+        emailSubject = `PO ${purchaseOrder.poNumber} - REJECTED`;
+        emailContent = `
+          Purchase Order ${purchaseOrder.poNumber} has been REJECTED by ${supplier.name}.
+          
+          Order Details:
+          - Item: ${purchaseOrder.item.name}
+          - Quantity: ${purchaseOrder.orderedQuantity}
+          
+          Rejection Reason: ${notes || 'No reason provided'}
+        `;
+        break;
+
+      case 'delay':
+        if (!proposedDeliveryDate) {
+          return res.status(400).json({
+            success: false,
+            message: 'Proposed delivery date is required for delay requests'
+          });
+        }
+        updateData.expectedDeliveryDate = proposedDeliveryDate;
+        emailSubject = `PO ${purchaseOrder.poNumber} - DELAY REQUEST`;
+        emailContent = `
+          Purchase Order ${purchaseOrder.poNumber} delivery delay requested by ${supplier.name}.
+          
+          Order Details:
+          - Item: ${purchaseOrder.item.name}
+          - Quantity: ${purchaseOrder.orderedQuantity}
+          - Original Delivery: ${purchaseOrder.expectedDeliveryDate}
+          - Proposed Delivery: ${proposedDeliveryDate}
+          
+          Delay Reason: ${notes || 'No reason provided'}
+        `;
+        break;
+
+      default:
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid action. Use "accept", "reject", or "delay"'
+        });
+    }
+
+    // Update PO
+    await purchaseOrder.update(updateData);
+
+    // Send email notification to admin/procurement team
+    try {
+      await sendEmail(
+        process.env.EMAIL_USER, // Send to system admin
+        emailSubject,
+        emailContent
+      );
+    } catch (emailError) {
+      console.error('Failed to send notification email:', emailError);
+      // Don't fail the request if email fails
+    }
+
+    // Get updated PO with all relations
+    const updatedPO = await PurchaseOrder.findByPk(id, {
+      include: [
+        {
+          model: PurchaseRequest,
+          as: 'purchaseRequest',
+          attributes: ['id', 'prNumber', 'urgencyLevel']
+        },
+        {
+          model: Item,
+          as: 'item',
+          include: [{ model: Category, as: 'category' }]
+        },
+        {
+          model: Warehouse,
+          as: 'warehouse'
+        },
+        {
+          model: User,
+          as: 'createdBy',
+          attributes: ['id', 'name', 'email']
+        }
+      ]
+    });
+
+    res.json({
+      success: true,
+      message: `Purchase order ${action}ed successfully`,
+      data: updatedPO
+    });
+
+  } catch (error) {
+    console.error('Error responding to purchase order:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to respond to purchase order',
+      error: error.message
+    });
+  }
+};
+
+// Get single PO details
+exports.getPurchaseOrderById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    let whereClause = { id };
+    
+    // If supplier, restrict to their POs only
+    if (req.user.role === 'supplier') {
+      const supplier = await Supplier.findOne({
+        where: { userId: req.user.id }
+      });
+      
+      if (!supplier) {
+        return res.status(404).json({
+          success: false,
+          message: 'Supplier profile not found'
+        });
+      }
+      
+      whereClause.supplierId = supplier.id;
+    }
+
+    const purchaseOrder = await PurchaseOrder.findOne({
+      where: whereClause,
+      include: [
+        {
+          model: PurchaseRequest,
+          as: 'purchaseRequest',
+          attributes: ['id', 'prNumber', 'urgencyLevel', 'reason']
+        },
+        {
+          model: Item,
+          as: 'item',
+          include: [{ model: Category, as: 'category' }]
+        },
+        {
+          model: Warehouse,
+          as: 'warehouse'
+        },
+        {
+          model: Supplier,
+          as: 'supplier'
+        },
+        {
+          model: User,
+          as: 'createdBy',
+          attributes: ['id', 'name', 'email']
+        },
+        {
+          model: User,
+          as: 'approvedBy',
+          attributes: ['id', 'name', 'email']
+        }
+      ]
+    });
+
+    if (!purchaseOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Purchase order not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: purchaseOrder
+    });
+
+  } catch (error) {
+    console.error('Error fetching purchase order:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch purchase order',
+      error: error.message
+    });
+  }
+};
+
+// Admin approves/rejects PO
+exports.approvePurchaseOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action, notes } = req.body; // action: 'approve' or 'reject'
+
+    const purchaseOrder = await PurchaseOrder.findByPk(id, {
+      include: [
+        {
+          model: Supplier,
+          as: 'supplier'
+        },
+        {
+          model: Item,
+          as: 'item'
+        }
+      ]
+    });
+
+    if (!purchaseOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Purchase order not found'
+      });
+    }
+
+    if (purchaseOrder.status !== 'draft') {
+      return res.status(400).json({
+        success: false,
+        message: 'Purchase order is not in draft status'
+      });
+    }
+
+    const updateData = {
+      approvedById: req.user.id,
+      approvedAt: new Date(),
+      notes: notes || purchaseOrder.notes
+    };
+
+    if (action === 'approve') {
+      updateData.status = 'sent';
+      updateData.sentAt = new Date();
+      
+      // Auto-send email to supplier
+      try {
+        const sendEmail = require('../utils/sendEmail');
+        await sendEmail(
+          purchaseOrder.supplier.email,
+          `New Purchase Order ${purchaseOrder.poNumber}`,
+          `
+          You have received a new purchase order.
+          
+          PO Number: ${purchaseOrder.poNumber}
+          Item: ${purchaseOrder.item.name}
+          Quantity: ${purchaseOrder.orderedQuantity}
+          Total Amount: $${purchaseOrder.totalAmount}
+          
+          Please log in to your supplier portal to respond:
+          ${process.env.FRONTEND_URL}/supplier-dashboard
+          `
+        );
+      } catch (emailError) {
+        console.error('Failed to send PO email:', emailError);
+        // Don't fail the approval if email fails
+      }
+      
+    } else if (action === 'reject') {
+      updateData.status = 'cancelled';
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid action. Use "approve" or "reject"'
+      });
+    }
+
+    await purchaseOrder.update(updateData);
+
+    const updatedPO = await PurchaseOrder.findByPk(id, {
+      include: [
+        {
+          model: PurchaseRequest,
+          as: 'purchaseRequest',
+          attributes: ['id', 'prNumber', 'urgencyLevel']
+        },
+        {
+          model: Item,
+          as: 'item',
+          include: [{ model: Category, as: 'category' }]
+        },
+        {
+          model: Warehouse,
+          as: 'warehouse'
+        },
+        {
+          model: Supplier,
+          as: 'supplier'
+        },
+        {
+          model: User,
+          as: 'createdBy',
+          attributes: ['id', 'name', 'email']
+        },
+        {
+          model: User,
+          as: 'approvedBy',
+          attributes: ['id', 'name', 'email']
+        }
+      ]
+    });
+
+    res.json({
+      success: true,
+      message: `Purchase order ${action}d successfully${action === 'approve' ? ' and sent to supplier' : ''}`,
+      data: updatedPO
+    });
+
+  } catch (error) {
+    console.error('Error approving purchase order:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to approve purchase order',
+      error: error.message
+    });
+  }
+};
+// Edit purchase order (Admin only - before sent)
+exports.editPurchaseOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      orderedQuantity,
+      unitPrice,
+      expectedDeliveryDate,
+      notes
+    } = req.body;
+
+    const purchaseOrder = await PurchaseOrder.findByPk(id);
+    if (!purchaseOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Purchase order not found'
+      });
+    }
+
+    // Check if PO can be edited (not sent yet)
+    if (purchaseOrder.status !== 'draft') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot edit purchase order that has been sent to supplier'
+      });
+    }
+
+    // Log admin action
+    console.log(`🔧 Admin Edit: ${req.user.name} edited PO ${purchaseOrder.poNumber}`);
+
+    // Calculate new total amount if quantity or price changed
+    const newOrderedQuantity = orderedQuantity || purchaseOrder.orderedQuantity;
+    const newUnitPrice = unitPrice || purchaseOrder.unitPrice;
+    const newTotalAmount = newOrderedQuantity * newUnitPrice;
+
+    await purchaseOrder.update({
+      orderedQuantity: newOrderedQuantity,
+      unitPrice: newUnitPrice,
+      totalAmount: newTotalAmount,
+      expectedDeliveryDate: expectedDeliveryDate || purchaseOrder.expectedDeliveryDate,
+      notes: notes || purchaseOrder.notes
+    });
+
+    const updatedPO = await PurchaseOrder.findByPk(id, {
+      include: [
+        {
+          model: PurchaseRequest,
+          as: 'purchaseRequest',
+          attributes: ['id', 'prNumber', 'urgencyLevel']
+        },
+        {
+          model: Item,
+          as: 'item',
+          include: [{ model: Category, as: 'category' }]
+        },
+        {
+          model: Warehouse,
+          as: 'warehouse'
+        },
+        {
+          model: Supplier,
+          as: 'supplier'
+        },
+        {
+          model: User,
+          as: 'createdBy',
+          attributes: ['id', 'name', 'email']
+        }
+      ]
+    });
+
+    res.json({
+      success: true,
+      message: 'Purchase order updated successfully',
+      data: updatedPO
+    });
+
+  } catch (error) {
+    console.error('Error editing purchase order:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to edit purchase order',
+      error: error.message
+    });
+  }
+};
+
+// Cancel purchase order (Admin only)
+exports.cancelPurchaseOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body; // Reason required for cancellation
+
+    const purchaseOrder = await PurchaseOrder.findByPk(id);
+    if (!purchaseOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Purchase order not found'
+      });
+    }
+
+    // Check if PO can be cancelled
+    if (['completed', 'cancelled'].includes(purchaseOrder.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot cancel purchase order in current status'
+      });
+    }
+
+    // Require reason for cancellation (audit trail)
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reason is required for cancelling purchase order'
+      });
+    }
+
+    // Log admin action
+    console.log(`🚫 Admin Cancel: ${req.user.name} cancelled PO ${purchaseOrder.poNumber} - Reason: ${reason}`);
+
+    await purchaseOrder.update({
+      status: 'cancelled',
+      notes: `${purchaseOrder.notes || ''}\n\nCANCELLED by ${req.user.name}: ${reason}`,
+      approvedById: req.user.id,
+      approvedAt: new Date()
+    });
+
+    // If PO was sent to supplier, send cancellation email
+    if (purchaseOrder.status === 'sent' || purchaseOrder.status === 'acknowledged') {
+      try {
+        const sendEmail = require('../utils/sendEmail');
+        const fullPO = await PurchaseOrder.findByPk(id, {
+          include: [
+            { model: Supplier, as: 'supplier' },
+            { model: Item, as: 'item' }
+          ]
+        });
+
+        if (fullPO && fullPO.supplier) {
+          await sendEmail(
+            fullPO.supplier.email,
+            `PO Cancellation - ${fullPO.poNumber}`,
+            `
+            Dear ${fullPO.supplier.name},
+            
+            Purchase Order ${fullPO.poNumber} has been CANCELLED.
+            
+            Cancellation Reason: ${reason}
+            
+            Please disregard any previous communications regarding this order.
+            
+            Best regards,
+            IMRAS Procurement Team
+            `
+          );
+        }
+      } catch (emailError) {
+        console.error('Failed to send cancellation email:', emailError);
+        // Don't fail the cancellation if email fails
+      }
+    }
+
+    const updatedPO = await PurchaseOrder.findByPk(id, {
+      include: [
+        {
+          model: PurchaseRequest,
+          as: 'purchaseRequest',
+          attributes: ['id', 'prNumber', 'urgencyLevel']
+        },
+        {
+          model: Item,
+          as: 'item',
+          include: [{ model: Category, as: 'category' }]
+        },
+        {
+          model: Warehouse,
+          as: 'warehouse'
+        },
+        {
+          model: Supplier,
+          as: 'supplier'
+        },
+        {
+          model: User,
+          as: 'createdBy',
+          attributes: ['id', 'name', 'email']
+        },
+        {
+          model: User,
+          as: 'approvedBy',
+          attributes: ['id', 'name', 'email']
+        }
+      ]
+    });
+
+    res.json({
+      success: true,
+      message: 'Purchase order cancelled successfully',
+      data: updatedPO
+    });
+
+  } catch (error) {
+    console.error('Error cancelling purchase order:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to cancel purchase order',
+      error: error.message
+    });
+  }
+};
