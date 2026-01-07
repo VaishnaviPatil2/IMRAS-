@@ -47,6 +47,14 @@ const Item = sequelize.define('Item', {
       min: 0
     }
   },
+  dailyConsumption: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 1.00,
+    validate: {
+      min: 0
+    }
+  },
   safetyStock: {
     type: DataTypes.INTEGER,
     allowNull: false,

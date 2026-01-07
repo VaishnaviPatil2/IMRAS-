@@ -34,6 +34,7 @@ const ItemCatalog = () => {
     categoryId: '',
     unitOfMeasure: 'pieces',
     leadTimeDays: 7,
+    dailyConsumption: 1.0,
     safetyStock: 0,
     reorderPoint: 10,
     preferredSupplierId: '',
@@ -110,6 +111,7 @@ const ItemCatalog = () => {
       categoryId: '',
       unitOfMeasure: 'pieces',
       leadTimeDays: 7,
+      dailyConsumption: 1.0,
       safetyStock: 0,
       reorderPoint: 10,
       preferredSupplierId: '',
@@ -127,6 +129,7 @@ const ItemCatalog = () => {
       categoryId: item.categoryId,
       unitOfMeasure: item.unitOfMeasure,
       leadTimeDays: item.leadTimeDays,
+      dailyConsumption: item.dailyConsumption || 1.0,
       safetyStock: item.safetyStock,
       reorderPoint: item.reorderPoint,
       preferredSupplierId: item.preferredSupplierId || '',
@@ -143,6 +146,7 @@ const ItemCatalog = () => {
         ...itemForm,
         categoryId: parseInt(itemForm.categoryId),
         leadTimeDays: parseInt(itemForm.leadTimeDays),
+        dailyConsumption: parseFloat(itemForm.dailyConsumption),
         safetyStock: parseInt(itemForm.safetyStock),
         reorderPoint: parseInt(itemForm.reorderPoint),
         preferredSupplierId: itemForm.preferredSupplierId ? parseInt(itemForm.preferredSupplierId) : null,
@@ -380,6 +384,9 @@ const ItemCatalog = () => {
                       Lead Time
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Daily Consumption
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Safety Stock
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -423,6 +430,9 @@ const ItemCatalog = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {item.leadTimeDays} days
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {item.dailyConsumption || 1.0} / day
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {item.safetyStock}
@@ -573,7 +583,7 @@ const ItemCatalog = () => {
                 </select>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Lead Time (days)</label>
                   <input
@@ -585,6 +595,21 @@ const ItemCatalog = () => {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Daily Consumption</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={itemForm.dailyConsumption}
+                    onChange={(e) => setItemForm({...itemForm, dailyConsumption: parseFloat(e.target.value) || 1.0})}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    placeholder="1.0"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Safety Stock</label>
                   <input
@@ -605,6 +630,9 @@ const ItemCatalog = () => {
                     onChange={(e) => setItemForm({...itemForm, reorderPoint: parseInt(e.target.value)})}
                     className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                   />
+                  <div className="text-xs text-gray-500 mt-1">
+                    Suggested: {Math.ceil((itemForm.dailyConsumption || 1) * (itemForm.leadTimeDays || 7) + (itemForm.safetyStock || 0))}
+                  </div>
                 </div>
               </div>
 

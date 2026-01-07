@@ -479,7 +479,7 @@ const SupplierPage = () => {
               <p className="text-sm text-gray-600 mt-2">
                 The password will be reset to: <code className="bg-gray-100 px-1 rounded">supplier123</code>
               </p>
-              <p className="text-xs text-orange-600 mt-1">
+              <p className="text-xs text-yellow-600 mt-1">
                 ⚠️ Please inform the supplier about the new password and ask them to change it after login.
               </p>
             </div>

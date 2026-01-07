@@ -3,7 +3,8 @@ const { Op } = require("sequelize");
 
 // Utility functions for stock calculations (shared logic)
 const calculateEffectiveMinimum = (stockLocation, item) => {
-  const itemReorderThreshold = (item.reorderPoint || 0) + (item.safetyStock || 0);
+  // Use reorderPoint directly as it already includes safetyStock in scientific formula
+  const itemReorderThreshold = item.reorderPoint || 0;
   const locationMinStock = stockLocation.minStock || 0;
   return Math.max(locationMinStock, itemReorderThreshold);
 };
@@ -485,12 +486,22 @@ exports.submitTransferOrder = async (req, res) => {
 // =========================
 exports.approveTransferOrder = async (req, res) => {
   try {
-    if (!['manager'].includes(req.user.role)) {
-      return res.status(403).json({ error: "Only inventory managers can approve or reject transfer orders" });
+    console.log('🔍 Approve Transfer Order Request:', {
+      userId: req.user.id,
+      userRole: req.user.role,
+      transferOrderId: req.params.id,
+      requestBody: req.body
+    });
+
+    // Allow both manager and admin (admin has override access)
+    if (!['manager', 'admin'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Only inventory managers and admins can approve or reject transfer orders" });
     }
 
     const { id } = req.params;
-    const { action, approvedQuantity } = req.body;
+    const { action, approvedQuantity, notes } = req.body;
+
+    console.log('📋 Processing action:', action, 'for transfer order:', id);
 
     if (!['approve', 'reject'].includes(action)) {
       return res.status(400).json({ error: "Action must be 'approve' or 'reject'" });
@@ -501,15 +512,21 @@ exports.approveTransferOrder = async (req, res) => {
       return res.status(404).json({ error: "Transfer order not found" });
     }
 
+    console.log('📦 Transfer Order Status:', {
+      status: transferOrder.status,
+      submittedForApproval: transferOrder.submittedForApproval,
+      requestedQuantity: transferOrder.requestedQuantity
+    });
+
     if (transferOrder.status !== 'pending' || !transferOrder.submittedForApproval) {
       return res.status(400).json({ error: "Transfer order must be pending and submitted for approval" });
     }
 
     if (action === 'approve') {
-      // Parse and validate approved quantity
-      const parsedApprovedQuantity = parseInt(approvedQuantity);
+      // Parse and validate approved quantity - use requested quantity if not provided
+      const parsedApprovedQuantity = approvedQuantity ? parseInt(approvedQuantity) : transferOrder.requestedQuantity;
       
-      if (!approvedQuantity || isNaN(parsedApprovedQuantity) || parsedApprovedQuantity <= 0) {
+      if (isNaN(parsedApprovedQuantity) || parsedApprovedQuantity <= 0) {
         return res.status(400).json({ error: "Approved quantity must be greater than 0" });
       }
 
@@ -536,14 +553,19 @@ exports.approveTransferOrder = async (req, res) => {
         status: 'approved',
         approvedQuantity: parsedApprovedQuantity,
         approvedById: req.user.id,
-        approvedAt: new Date()
+        approvedAt: new Date(),
+        notes: notes || 'Approved by ' + (req.user.role === 'admin' ? 'admin' : 'manager')
       });
+      console.log('✅ Transfer Order approved:', id, 'Quantity:', parsedApprovedQuantity);
     } else {
+      // Rejection logic
       await transferOrder.update({
         status: 'rejected',
         approvedById: req.user.id,
-        approvedAt: new Date()
+        approvedAt: new Date(),
+        notes: notes || 'Rejected by ' + (req.user.role === 'admin' ? 'admin' : 'manager')
       });
+      console.log('❌ Transfer Order rejected:', id);
     }
 
     const updatedTransferOrder = await TransferOrder.findByPk(id, {
@@ -563,13 +585,26 @@ exports.approveTransferOrder = async (req, res) => {
       ]
     });
 
+    console.log('✅ Transfer Order processed successfully:', action, id);
+
     res.json({
+      success: true,
       message: `Transfer order ${action}d successfully`,
       transferOrder: updatedTransferOrder
     });
   } catch (error) {
-    console.error("Approve transfer order error:", error);
-    res.status(500).json({ error: error.message });
+    console.error("❌ Approve transfer order error:", error);
+    console.error("Error details:", {
+      message: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+      userRole: req.user?.role,
+      transferOrderId: req.params.id
+    });
+    res.status(500).json({ 
+      success: false,
+      error: error.message || 'Failed to process transfer order approval'
+    });
   }
 };
 

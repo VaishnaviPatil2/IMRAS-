@@ -3,12 +3,12 @@
 /**
  * Calculate the effective minimum stock threshold
  * @param {Object} stockLocation - Stock location object
- * @param {Object} item - Item object with reorderPoint and safetyStock
+ * @param {Object} item - Item object with reorderPoint (already includes safetyStock)
  * @returns {number} Effective minimum threshold
  */
 export const calculateEffectiveMinimum = (stockLocation, item) => {
-  // Item-level reorder threshold: reorderPoint + safetyStock
-  const itemReorderThreshold = (item?.reorderPoint || 0) + (item?.safetyStock || 0);
+  // Item-level reorder threshold: reorderPoint (already includes safetyStock in scientific formula)
+  const itemReorderThreshold = item?.reorderPoint || 0;
   
   // Location-level minimum
   const locationMinStock = stockLocation?.minStock || 0;
@@ -55,9 +55,9 @@ export const getStockStatusDisplay = (status) => {
     case 'very_low_stock':
       return {
         label: 'Very Low Stock',
-        bgColor: 'bg-orange-100',
-        textColor: 'text-orange-800',
-        rowBgColor: 'bg-orange-50'
+        bgColor: 'bg-yellow-200',
+        textColor: 'text-yellow-700',
+        rowBgColor: 'bg-yellow-100'
       };
     case 'low_stock':
       return {
@@ -87,14 +87,14 @@ export const getStockStatusDisplay = (status) => {
  * Calculate urgency level based on stock status
  * @param {Object} stockLocation - Stock location object
  * @param {Object} item - Item object with reorderPoint and safetyStock
- * @returns {string} Urgency level: 'critical', 'high', 'medium', or 'low'
+ * @returns {string} Urgency level: 'urgent', 'high', 'medium', or 'low'
  */
 export const calculateUrgencyLevel = (stockLocation, item) => {
   const currentStock = stockLocation?.currentStock || 0;
   const effectiveMinimum = calculateEffectiveMinimum(stockLocation, item);
   
   if (currentStock === 0) {
-    return 'critical';        // OUT OF STOCK - Emergency!
+    return 'urgent';        // OUT OF STOCK - Emergency!
   } else if (currentStock <= (effectiveMinimum * 0.5)) {
     return 'high';            // Very low - Priority
   } else if (currentStock <= effectiveMinimum) {

@@ -19,6 +19,7 @@ import SupplierPage from "./pages/SupplierPage";
 import SupplierDashboard from "./pages/SupplierDashboard";
 import PurchaseRequest from "./pages/PurchaseRequest";
 import PurchaseOrder from "./pages/PurchaseOrder";
+import GRN from "./pages/GRN";
 
 // Layout wrapper for consistent sidebar/header
 import Layout from "./components/Layout";
@@ -34,6 +35,19 @@ const SupplierRouteHandler = () => {
   
   // Otherwise show admin supplier management page
   return <SupplierPage />;
+};
+
+// Component to handle dashboard route based on user role
+const DashboardRouteHandler = () => {
+  const { user } = useContext(AuthContext);
+  
+  // If user is supplier, redirect to supplier dashboard
+  if (user?.role === 'supplier') {
+    return <Navigate to="/suppliers" replace />;
+  }
+  
+  // Otherwise show main dashboard
+  return <Dashboard />;
 };
 
 // Purchase Request Page Component
@@ -60,11 +74,13 @@ function App() {
             element={
               <ProtectedRoute>
                 <Layout>
-                  <Dashboard />
+                  <DashboardRouteHandler />
                 </Layout>
               </ProtectedRoute>
             }
           />
+
+
 
           <Route
             path="/inventory"
@@ -171,12 +187,9 @@ function App() {
           <Route
             path="/grn"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['manager', 'warehouse']}>
                 <Layout>
-                  <div className="text-center py-8">
-                    <h2 className="text-xl font-semibold text-gray-600">Goods Receipt Notes Module</h2>
-                    <p className="text-gray-500 mt-2">This module has been temporarily disabled.</p>
-                  </div>
+                  <GRN />
                 </Layout>
               </ProtectedRoute>
             }

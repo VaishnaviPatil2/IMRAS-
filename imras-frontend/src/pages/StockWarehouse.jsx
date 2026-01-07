@@ -18,7 +18,6 @@ const StockWarehouse = () => {
   const [stockLocations, setStockLocations] = useState([]);
   const [transferOrders, setTransferOrders] = useState([]);
   const [items, setItems] = useState([]);
-  const [lowStockItems, setLowStockItems] = useState([]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -121,10 +120,10 @@ const StockWarehouse = () => {
         // Load items for dropdowns
         const itemResponse = await itemApi.getAll({ active: 'true', limit: 1000 });
         console.log('Basic items response:', itemResponse.data);
-        if (itemResponse.data && Array.isArray(itemResponse.data)) {
-          setItems(itemResponse.data);
-        } else if (itemResponse.data && Array.isArray(itemResponse.data.items)) {
+        if (itemResponse.data && itemResponse.data.items && Array.isArray(itemResponse.data.items)) {
           setItems(itemResponse.data.items);
+        } else if (itemResponse.data && Array.isArray(itemResponse.data)) {
+          setItems(itemResponse.data);
         }
       } catch (err) {
         console.error('Error loading basic data:', err);
@@ -146,7 +145,6 @@ const StockWarehouse = () => {
             break;
           case 'stock-locations':
             await loadStockLocations();
-            await loadLowStockItems();
             break;
           case 'transfer-orders':
             await loadTransferOrders();
@@ -275,16 +273,6 @@ const StockWarehouse = () => {
     }
   };
 
-  const loadLowStockItems = async () => {
-    try {
-      const response = await stockLocationApi.getLowStock();
-      if (response.data) {
-        setLowStockItems(response.data);
-      }
-    } catch (err) {
-      console.error('Failed to load low stock items:', err);
-    }
-  };
   // Clear messages
   useEffect(() => {
     if (error || success) {
@@ -367,88 +355,6 @@ const StockWarehouse = () => {
       {success && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
           {success}
-        </div>
-      )}
-      {/* Low Stock Alert with Auto PO Generation */}
-      {activeTab === 'stock-locations' && lowStockItems.length > 0 && (
-        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-400 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <span className="text-2xl mr-3">⚠️</span>
-              <div>
-                <div className="font-semibold text-yellow-800">Low Stock Alert</div>
-                <div className="text-yellow-700">
-                  {lowStockItems.length} items are below minimum stock level
-                </div>
-              </div>
-            </div>
-            
-            {/* Auto PO Generation Button - Only for warehouse staff */}
-            {isWarehouse && (
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={async () => {
-                    try {
-                      setLoading(true);
-                      const result = await purchaseRequestApi.triggerAutoGeneration();
-                      setSuccess(`🚀 Auto PO Generation completed! Generated ${result.summary?.totalPRsCreated || 0} PRs and ${result.summary?.totalPOsCreated || 0} POs for low stock items.`);
-                      // Refresh the low stock items after generation
-                      await loadLowStockItems();
-                    } catch (err) {
-                      setError('Failed to generate automatic POs: ' + (err.response?.data?.error || err.message));
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                  className="px-4 py-2 rounded-md text-white font-medium transition-colors bg-blue-600 hover:bg-blue-700"
-                  disabled={loading}
-                >
-                  <div className="flex items-center">
-                    <span className="mr-2">🚀</span>
-                    Generate Auto POs
-                  </div>
-                </button>
-                
-                <div className="text-xs text-yellow-600 max-w-xs">
-                  <div className="font-medium">Auto PO will:</div>
-                  <div>• Create purchase requests for low stock items</div>
-                  <div>• Auto-approve urgent/high urgency requests</div>
-                  <div>• Generate purchase orders automatically</div>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          {/* Low Stock Items Preview */}
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {lowStockItems.map((item) => (
-              <div key={item.id} className={`p-3 rounded border ${
-                item.currentStock === 0 
-                  ? 'bg-red-50 border-red-200' 
-                  : 'bg-yellow-50 border-yellow-200'
-              }`}>
-                <div className="flex items-center justify-between">
-                  <div className="font-medium text-gray-900">{item.item?.name}</div>
-                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                    item.currentStock === 0 
-                      ? 'bg-red-100 text-red-800' 
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {item.currentStock === 0 ? 'OUT OF STOCK' : 'LOW STOCK'}
-                  </span>
-                </div>
-                <div className="text-sm text-gray-600 mt-1">
-                  <div>SKU: {item.item?.sku}</div>
-                  <div>Warehouse: {item.warehouse?.name}</div>
-                  <div className="flex justify-between mt-1">
-                    <span>Current: {item.currentStock}</span>
-                    <span>Min: {item.minStock}</span>
-                    <span>Max: {item.maxStock}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
       {/* Tabs */}
@@ -730,20 +636,31 @@ const StockWarehouse = () => {
                             <div className="text-sm text-gray-500">{location.warehouse?.code}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              Current: {location.currentStock} {location.item?.unitOfMeasure}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              Min: {location.minStock} | Max: {location.maxStock}
-                            </div>
-                            <div className="text-sm text-blue-600">
-                              Effective Min: {effectiveMinimum}
-                            </div>
+                            {(() => {
+                              const isRecentlyUpdated = new Date() - new Date(location.updatedAt) < 60 * 60 * 1000; // Last 1 hour
+                              return (
+                                <div className={`${isRecentlyUpdated ? 'bg-green-50 border border-green-200 rounded p-2' : ''}`}>
+                                  <div className={`text-sm ${isRecentlyUpdated ? 'text-green-900 font-medium' : 'text-gray-900'}`}>
+                                    Current: {location.currentStock} {location.item?.unitOfMeasure}
+                                    {isRecentlyUpdated && <span className="ml-2 text-green-600">🔄 Recently Updated</span>}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    Min: {location.minStock} | Max: {location.maxStock}
+                                  </div>
+                                  <div className="text-sm text-blue-600">
+                                    Effective Min: {effectiveMinimum}
+                                  </div>
+                                  <div className="text-xs text-gray-400 mt-1">
+                                    Updated: {new Date(location.updatedAt).toLocaleString()}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                               stockStatus === 'out_of_stock' ? 'bg-red-100 text-red-800' :
-                              stockStatus === 'very_low_stock' ? 'bg-orange-100 text-orange-800' :
+                              stockStatus === 'very_low_stock' ? 'bg-yellow-200 text-yellow-700' :
                               stockStatus === 'low_stock' ? 'bg-yellow-100 text-yellow-800' :
                               stockStatus === 'sufficient' ? 'bg-green-100 text-green-800' :
                               'bg-gray-100 text-gray-800'
@@ -853,9 +770,6 @@ const StockWarehouse = () => {
             {/* Item Search Section */}
             <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
               <h3 className="text-md font-semibold text-green-900 mb-3">🔍 Search Item Stock Across Warehouses</h3>
-              <div className="text-sm text-green-700 mb-3">
-                💡 <strong>Tip:</strong> Search for items to see stock levels across all warehouses and create intelligent transfer orders with pre-filled information.
-              </div>
               
               <div className="flex gap-4 mb-4">
                 <div className="flex-1">
@@ -957,7 +871,12 @@ const StockWarehouse = () => {
                               <div className="text-sm text-gray-600">
                                 SKU: {item.sku} • ID: {item.id} • Total Stock: {totalStock} {item.unitOfMeasure}
                                 <br />
-                                <span className="text-blue-600">Item Reorder Threshold: {(item.reorderPoint || 0) + (item.safetyStock || 0)} (RP: {item.reorderPoint || 0} + SS: {item.safetyStock || 0})</span>
+                                <span className="text-blue-600">Item Reorder Point: {item.reorderPoint || 0} (includes safety stock)</span>
+                                <br />
+                                <span className="text-purple-600">Daily Consumption: {item.dailyConsumption || 0} {item.unitOfMeasure}/day</span>
+                                {item.dailyConsumption > 0 && totalStock > 0 && (
+                                  <span className="text-orange-600"> • ~{Math.ceil(totalStock / item.dailyConsumption)} days supply</span>
+                                )}
                                 <br />
                                 <span className="font-medium text-gray-700">Total Effective Minimum: {totalEffectiveMinimum}</span>
                               </div>
@@ -981,7 +900,7 @@ const StockWarehouse = () => {
                                     warehouseStock.totalStock <= (warehouseStock.locations.reduce((sum, loc) => {
                                       const effectiveMin = calculateEffectiveMinimum(loc, item);
                                       return sum + effectiveMin;
-                                    }, 0) * 0.5) ? 'text-orange-600' :
+                                    }, 0) * 0.5) ? 'text-yellow-600' :
                                     warehouseStock.totalStock <= warehouseStock.locations.reduce((sum, loc) => {
                                       const effectiveMin = calculateEffectiveMinimum(loc, item);
                                       return sum + effectiveMin;
@@ -1019,7 +938,7 @@ const StockWarehouse = () => {
                                       );
                                     } else if (warehouseStock.totalStock <= (totalEffectiveMinimum * 0.5)) {
                                       return (
-                                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-200 text-yellow-700">
                                           Very Low Stock ({utilizationPercent}% utilized)
                                         </span>
                                       );
@@ -1052,7 +971,7 @@ const StockWarehouse = () => {
                                           <span className="font-medium">{location.locationCode}</span>
                                           <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${
                                             stockStatus === 'out_of_stock' ? 'bg-red-100 text-red-800' :
-                                            stockStatus === 'very_low_stock' ? 'bg-orange-100 text-orange-800' :
+                                            stockStatus === 'very_low_stock' ? 'bg-yellow-200 text-yellow-700' :
                                             stockStatus === 'low_stock' ? 'bg-yellow-100 text-yellow-800' :
                                             stockStatus === 'sufficient' ? 'bg-green-100 text-green-800' :
                                             'bg-gray-100 text-gray-800'
@@ -1301,7 +1220,7 @@ const StockWarehouse = () => {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                               autoPriority === 'urgent' ? 'bg-red-100 text-red-800' :
-                              autoPriority === 'high' ? 'bg-orange-100 text-orange-800' :
+                              autoPriority === 'high' ? 'bg-yellow-200 text-yellow-700' :
                               autoPriority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
                               'bg-green-100 text-green-800'
                             }`}>
@@ -1698,12 +1617,45 @@ const StockWarehouse = () => {
               e.preventDefault();
               setLoading(true);
               try {
+                let response;
                 if (editingItem) {
-                  await stockLocationApi.update(editingItem.id, stockLocationForm);
-                  setSuccess('Stock location updated successfully');
+                  response = await stockLocationApi.update(editingItem.id, stockLocationForm);
+                  
+                  // Check if automatic PRs/POs were created
+                  if (response.data?.automaticTrigger) {
+                    const trigger = response.data.automaticTrigger;
+                    if (trigger.prsCreated > 0) {
+                      setSuccess(`Stock updated! Automatic system created ${trigger.prsCreated} PRs and ${trigger.posCreated} POs. ${trigger.message}`);
+                      
+                      // Trigger a custom event to notify other components to refresh
+                      window.dispatchEvent(new CustomEvent('automaticPRsCreated', {
+                        detail: { prsCreated: trigger.prsCreated, posCreated: trigger.posCreated }
+                      }));
+                    } else {
+                      setSuccess(`Stock location updated successfully. ${trigger.message}`);
+                    }
+                  } else {
+                    setSuccess('Stock location updated successfully');
+                  }
                 } else {
-                  await stockLocationApi.create(stockLocationForm);
-                  setSuccess('Stock location created successfully');
+                  response = await stockLocationApi.create(stockLocationForm);
+                  
+                  // Check if automatic PRs/POs were created during creation
+                  if (response.data?.automaticTrigger) {
+                    const trigger = response.data.automaticTrigger;
+                    if (trigger.prsCreated > 0) {
+                      setSuccess(`Stock location created! Automatic system created ${trigger.prsCreated} PRs and ${trigger.posCreated} POs. ${trigger.message}`);
+                      
+                      // Trigger a custom event to notify other components to refresh
+                      window.dispatchEvent(new CustomEvent('automaticPRsCreated', {
+                        detail: { prsCreated: trigger.prsCreated, posCreated: trigger.posCreated }
+                      }));
+                    } else {
+                      setSuccess(`Stock location created successfully. ${trigger.message}`);
+                    }
+                  } else {
+                    setSuccess('Stock location created successfully');
+                  }
                 }
                 setShowStockLocationModal(false);
                 setEditingItem(null);
@@ -2003,7 +1955,7 @@ const StockWarehouse = () => {
                         
                         if (sourceStockLocations.length === 0) {
                           return (
-                            <span className="text-orange-600">
+                            <span className="text-yellow-600">
                               ⚠️ Item not found in source warehouse
                             </span>
                           );
@@ -2048,7 +2000,7 @@ const StockWarehouse = () => {
                         
                         if (transferOrderForm.requestedQuantity > totalStock) {
                           return (
-                            <span className="text-orange-600">
+                            <span className="text-yellow-600">
                               ⚠️ Requested quantity ({transferOrderForm.requestedQuantity}) exceeds available stock ({totalStock})
                             </span>
                           );
@@ -2332,7 +2284,7 @@ const StockWarehouse = () => {
                     <div><strong>Priority:</strong> 
                       <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${
                         selectedTransferOrder.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                        selectedTransferOrder.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                        selectedTransferOrder.priority === 'high' ? 'bg-yellow-200 text-yellow-700' :
                         selectedTransferOrder.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-green-100 text-green-800'
                       }`}>

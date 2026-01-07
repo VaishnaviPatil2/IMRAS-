@@ -118,7 +118,8 @@ const SupplierDashboard = () => {
     const statusConfig = {
       'draft': { color: 'bg-gray-100 text-gray-800', text: 'Draft' },
       'sent': { color: 'bg-blue-100 text-blue-800', text: 'Pending Response' },
-      'acknowledged': { color: 'bg-green-100 text-green-800', text: 'Accepted' },
+      'acknowledged': { color: 'bg-green-100 text-green-800', text: 'Acknowledged' },
+      'delay_requested': { color: 'bg-orange-100 text-orange-800', text: 'Delay Requested' },
       'partially_received': { color: 'bg-yellow-100 text-yellow-800', text: 'Partially Received' },
       'completed': { color: 'bg-green-100 text-green-800', text: 'Completed' },
       'cancelled': { color: 'bg-red-100 text-red-800', text: 'Cancelled' }
@@ -133,36 +134,60 @@ const SupplierDashboard = () => {
     );
   };
 
-  const getPriorityBadge = (priority) => {
-    const priorityConfig = {
-      'low': { color: 'bg-gray-100 text-gray-800', text: 'Low' },
-      'medium': { color: 'bg-blue-100 text-blue-800', text: 'Medium' },
-      'high': { color: 'bg-orange-100 text-orange-800', text: 'High' },
-      'urgent': { color: 'bg-red-100 text-red-800', text: 'Urgent' }
-    };
-
-    const config = priorityConfig[priority] || { color: 'bg-gray-100 text-gray-800', text: priority };
-    
-    return (
-      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.color}`}>
-        {config.text}
-      </span>
-    );
+  // Format date to dd/mm/yyyy
+  const formatDate = (dateString) => {
+    if (!dateString) return 'TBD';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB'); // dd/mm/yyyy format
   };
 
   const canRespond = (po) => {
-    return ['draft', 'sent'].includes(po.status);
+    // Suppliers can only respond to POs that are SENT to them
+    // Draft POs are not visible to suppliers (handled by backend)
+    return po.status === 'sent';
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
-          {supplierInfo && (
-            <p className="text-gray-600">Welcome, {supplierInfo.name}</p>
-          )}
+      {/* Enhanced Header with Professional Styling */}
+      <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 rounded-2xl p-8 text-white shadow-2xl mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">
+              Purchase Orders Dashboard
+            </h1>
+            {supplierInfo && (
+              <div className="space-y-2">
+                <p className="text-blue-100 text-lg">Welcome, {supplierInfo.name}!</p>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold">{purchaseOrders.length}</div>
+            <div className="text-sm text-blue-100">Total Orders</div>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold text-yellow-300">
+              {purchaseOrders.filter(po => po.status === 'sent').length}
+            </div>
+            <div className="text-sm text-blue-100">Pending Response</div>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold text-green-300">
+              {purchaseOrders.filter(po => po.status === 'acknowledged').length}
+            </div>
+            <div className="text-sm text-blue-100">Acknowledged</div>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold text-purple-300">
+              {purchaseOrders.filter(po => po.status === 'completed').length}
+            </div>
+            <div className="text-sm text-blue-100">Completed</div>
+          </div>
         </div>
       </div>
 
@@ -178,124 +203,176 @@ const SupplierDashboard = () => {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4">
+      {/* Enhanced Filters */}
+      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+        <h3 className="text-lg font-semibold mb-4 text-gray-800">
+          Filter Orders
+        </h3>
         <div className="flex flex-wrap gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <div className="flex-1 min-w-48">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
             >
               <option value="">All Status</option>
               <option value="sent">Pending Response</option>
-              <option value="acknowledged">Accepted</option>
+              <option value="acknowledged">Acknowledged</option>
+              <option value="delay_requested">Delay Requested</option>
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
             </select>
           </div>
+          <div className="flex items-end">
+            <button
+              onClick={() => setStatusFilter('')}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors"
+            >
+              Clear Filter
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Purchase Orders */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6">
-          <h2 className="text-lg font-semibold mb-4">Your Purchase Orders</h2>
+      {/* Enhanced Purchase Orders Table */}
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+        <div className="p-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-800">
+              Your Purchase Orders
+              {purchaseOrders.length > 0 && (
+                <span className="ml-3 bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
+                  {purchaseOrders.length} orders
+                </span>
+              )}
+            </h2>
+            {purchaseOrders.filter(po => po.status === 'sent').length > 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-2">
+                <div className="flex items-center text-yellow-800">
+                  <span className="font-medium">
+                    {purchaseOrders.filter(po => po.status === 'sent').length} orders awaiting your response
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
           
           {loading ? (
-            <div className="text-center py-8">Loading purchase orders...</div>
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading purchase orders...</p>
+            </div>
           ) : purchaseOrders.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No purchase orders found. {statusFilter && `Try clearing the status filter.`}
+            <div className="text-center py-12">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Purchase Orders Found</h3>
+              <p className="text-gray-500">
+                {statusFilter ? 'Try clearing the status filter to see all orders.' : 'No purchase orders have been sent to you yet.'}
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      PO Details
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Order Details
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Item
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Item Information
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Quantity & Price
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Quantity & Pricing
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Delivery
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Delivery Details
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {purchaseOrders.map((po) => (
-                    <tr key={po.id}>
+                    <tr key={po.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{po.poNumber}</div>
-                        <div className="text-sm text-gray-500">
-                          {getPriorityBadge(po.priority)}
-                        </div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          Created: {new Date(po.createdAt).toLocaleDateString()}
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{po.poNumber}</div>
+                          <div className="text-sm text-gray-500">
+                            Created: {formatDate(po.createdAt)}
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">{po.item?.name}</div>
-                        <div className="text-sm text-gray-500">{po.item?.sku}</div>
-                        <div className="text-xs text-gray-400">{po.item?.category?.name}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">Qty: {po.orderedQuantity}</div>
-                        <div className="text-sm text-gray-500">Unit: ${po.unitPrice}</div>
-                        <div className="text-sm font-medium text-gray-900">Total: ${po.totalAmount}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          To: {po.warehouse?.name}
+                          <span className="font-medium">Qty:</span> {po.orderedQuantity}
                         </div>
                         <div className="text-sm text-gray-500">
-                          Expected: {po.expectedDeliveryDate ? new Date(po.expectedDeliveryDate).toLocaleDateString() : 'TBD'}
+                          <span className="font-medium">Unit Price:</span> {po.unitPrice}
+                        </div>
+                        <div className="text-sm font-medium text-gray-900">
+                          <span className="font-medium">Total:</span> {po.totalAmount}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          <span className="font-medium">To:</span> {po.warehouse?.name}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          <span className="font-medium">Expected:</span> {po.expectedDeliveryDate ? new Date(po.expectedDeliveryDate).toLocaleDateString() : 'TBD'}
                         </div>
                         {po.actualDeliveryDate && (
                           <div className="text-sm text-green-600">
-                            Confirmed: {new Date(po.actualDeliveryDate).toLocaleDateString()}
+                            <span className="font-medium">Delivered:</span> {new Date(po.actualDeliveryDate).toLocaleDateString()}
+                          </div>
+                        )}
+                        {po.proposedDeliveryDate && (
+                          <div className="text-sm text-orange-600">
+                            <span className="font-medium">Proposed:</span> {new Date(po.proposedDeliveryDate).toLocaleDateString()}
                           </div>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(po.status)}
+                        <div className="space-y-2">
+                          {getStatusBadge(po.status)}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         {canRespond(po) ? (
-                          <div className="flex space-x-2">
+                          <div className="flex flex-col space-y-2">
                             <button
                               onClick={() => openResponseModal(po, 'accept')}
-                              className="text-green-600 hover:text-green-900 px-2 py-1 border border-green-300 rounded text-xs"
+                              className="bg-green-50 hover:bg-green-100 text-green-700 font-medium py-2 px-4 rounded-lg border border-green-200 transition-colors flex items-center justify-center"
                             >
                               Accept
                             </button>
                             <button
                               onClick={() => openResponseModal(po, 'delay')}
-                              className="text-yellow-600 hover:text-yellow-900 px-2 py-1 border border-yellow-300 rounded text-xs"
+                              className="bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-medium py-2 px-4 rounded-lg border border-yellow-200 transition-colors flex items-center justify-center"
                             >
-                              Delay
+                              Request Delay
                             </button>
                             <button
                               onClick={() => openResponseModal(po, 'reject')}
-                              className="text-red-600 hover:text-red-900 px-2 py-1 border border-red-300 rounded text-xs"
+                              className="bg-red-50 hover:bg-red-100 text-red-700 font-medium py-2 px-4 rounded-lg border border-red-200 transition-colors flex items-center justify-center"
                             >
                               Reject
                             </button>
                           </div>
                         ) : (
-                          <span className="text-gray-500 text-xs">No actions available</span>
+                          <div className="text-center">
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                              {po.status === 'acknowledged' ? 'Acknowledged' :
+                               po.status === 'delay_requested' ? 'Delay Pending' :
+                               po.status === 'completed' ? 'Completed' :
+                               po.status === 'cancelled' ? 'Cancelled' : 'No Actions'}
+                            </span>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -319,7 +396,7 @@ const SupplierDashboard = () => {
               <div className="text-sm font-medium">{selectedPO.poNumber}</div>
               <div className="text-sm text-gray-600">{selectedPO.item?.name}</div>
               <div className="text-sm text-gray-600">Quantity: {selectedPO.orderedQuantity}</div>
-              <div className="text-sm text-gray-600">Total: ${selectedPO.totalAmount}</div>
+              <div className="text-sm text-gray-600">Total: {selectedPO.totalAmount}</div>
             </div>
             
             <form onSubmit={handleResponseSubmit} className="space-y-4">

@@ -23,6 +23,7 @@ export const fetchAllPurchaseOrders = async (filters = {}) => {
     if (filters.status) params.append('status', filters.status);
     if (filters.priority) params.append('priority', filters.priority);
     if (filters.supplierId) params.append('supplierId', filters.supplierId);
+    if (filters.type) params.append('type', filters.type);
     
     const response = await api.get(`/purchase-orders/all?${params}`);
     return response.data;
@@ -69,5 +70,53 @@ export const respondToPurchaseOrder = async (id, responseData) => {
   } catch (error) {
     console.error('Respond to purchase order error:', error);
     throw error.response?.data || { error: 'Failed to respond to purchase order' };
+  }
+};
+
+// Admin approve purchase order
+export const approvePurchaseOrder = async (id, notes) => {
+  try {
+    const api = createAuthAxios();
+    const response = await api.put(`/purchase-orders/${id}/approve`, { action: 'approve', notes });
+    return response.data;
+  } catch (error) {
+    console.error('Approve purchase order error:', error);
+    throw error.response?.data || { error: 'Failed to approve purchase order' };
+  }
+};
+
+// Admin reject purchase order
+export const rejectPurchaseOrder = async (id, notes) => {
+  try {
+    const api = createAuthAxios();
+    const response = await api.put(`/purchase-orders/${id}/approve`, { action: 'reject', notes });
+    return response.data;
+  } catch (error) {
+    console.error('Reject purchase order error:', error);
+    throw error.response?.data || { error: 'Failed to reject purchase order' };
+  }
+};
+
+// Admin cancel purchase order
+export const cancelPurchaseOrder = async (id, reason) => {
+  try {
+    const api = createAuthAxios();
+    const response = await api.put(`/purchase-orders/${id}/cancel`, { reason });
+    return response.data;
+  } catch (error) {
+    console.error('Cancel purchase order error:', error);
+    throw error.response?.data || { error: 'Failed to cancel purchase order' };
+  }
+};
+
+// Admin edit purchase order
+export const editPurchaseOrder = async (id, updateData) => {
+  try {
+    const api = createAuthAxios();
+    const response = await api.put(`/purchase-orders/${id}/edit`, updateData);
+    return response.data;
+  } catch (error) {
+    console.error('Edit purchase order error:', error);
+    throw error.response?.data || { error: 'Failed to edit purchase order' };
   }
 };

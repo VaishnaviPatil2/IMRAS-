@@ -152,9 +152,11 @@ const seedDatabase = async () => {
           description: 'High-performance laptop for office use',
           categoryId: categories[0].id,
           unitOfMeasure: 'pieces',
+          unitPrice: 850.00,
           leadTimeDays: 7,
+          dailyConsumption: 0.5,
           safetyStock: 5,
-          reorderPoint: 10,
+          reorderPoint: 9, // (0.5 * 7) + 5 = 8.5 ≈ 9
           isActive: true,
           createdById: adminUser.id
         },
@@ -164,9 +166,39 @@ const seedDatabase = async () => {
           description: 'Ergonomic wireless mouse',
           categoryId: categories[0].id,
           unitOfMeasure: 'pieces',
+          unitPrice: 25.00,
           leadTimeDays: 3,
+          dailyConsumption: 2.0,
           safetyStock: 20,
-          reorderPoint: 50,
+          reorderPoint: 26, // (2.0 * 3) + 20 = 26
+          isActive: true,
+          createdById: adminUser.id
+        },
+        {
+          sku: 'ELEC003',
+          name: 'Keyboard',
+          description: 'Mechanical keyboard for office use',
+          categoryId: categories[0].id,
+          unitOfMeasure: 'pieces',
+          unitPrice: 75.00,
+          leadTimeDays: 5,
+          dailyConsumption: 1.0,
+          safetyStock: 10,
+          reorderPoint: 15, // (1.0 * 5) + 10 = 15
+          isActive: true,
+          createdById: adminUser.id
+        },
+        {
+          sku: 'ELEC004',
+          name: 'Mobile',
+          description: 'Smartphone for business use',
+          categoryId: categories[0].id,
+          unitOfMeasure: 'pieces',
+          unitPrice: 650.00,
+          leadTimeDays: 10,
+          dailyConsumption: 0.3,
+          safetyStock: 5,
+          reorderPoint: 8, // (0.3 * 10) + 5 = 8
           isActive: true,
           createdById: adminUser.id
         },
@@ -177,8 +209,9 @@ const seedDatabase = async () => {
           categoryId: categories[1].id,
           unitOfMeasure: 'boxes',
           leadTimeDays: 2,
+          dailyConsumption: 5.0,
           safetyStock: 10,
-          reorderPoint: 25,
+          reorderPoint: 20, // (5.0 * 2) + 10 = 20
           isActive: true,
           createdById: adminUser.id
         },
@@ -189,8 +222,9 @@ const seedDatabase = async () => {
           categoryId: categories[1].id,
           unitOfMeasure: 'pieces',
           leadTimeDays: 1,
+          dailyConsumption: 10.0,
           safetyStock: 50,
-          reorderPoint: 100,
+          reorderPoint: 60, // (10.0 * 1) + 50 = 60
           isActive: true,
           createdById: adminUser.id
         },
@@ -201,8 +235,9 @@ const seedDatabase = async () => {
           categoryId: categories[2].id,
           unitOfMeasure: 'kg',
           leadTimeDays: 14,
+          dailyConsumption: 25.0,
           safetyStock: 100,
-          reorderPoint: 500,
+          reorderPoint: 450, // (25.0 * 14) + 100 = 450
           isActive: true,
           createdById: adminUser.id
         }

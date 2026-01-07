@@ -2,31 +2,20 @@ const express = require("express");
 const cors = require("cors");
 const { sequelize, User } = require("./models");
 const bcrypt = require("bcryptjs");
+// const AutomaticTriggerService = require("./services/automaticTriggerService"); // Temporarily disabled
 require("dotenv").config();
 
-// const grnRoutes = require("./routes/grn.routes"); // remove if file doesn't exist
+const grnRoutes = require("./routes/grn.routes");
 
 const app = express();
 
 // Global error handlers to prevent server crashes
 process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught Exception:', error.message);
-  console.error('Stack:', error.stack);
-  // Don't exit the process, just log the error
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-  // Don't exit the process, just log the error
-});
-
-// Handle SIGTERM and SIGINT gracefully
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, will be handled in server startup');
-});
-
-process.on('SIGINT', () => {
-  console.log('SIGINT received, will be handled in server startup');
+  console.error('❌ Unhandled Rejection:', reason);
 });
 
 // Middleware
@@ -35,56 +24,29 @@ app.use(express.json());
 
 // Routes
 app.use("/api/auth", require("./routes/auth.routes"));
-// app.use("/api/inventory", require("./routes/inventory.routes")); // MongoDB syntax - commented out
 app.use("/api/suppliers", require("./routes/supplier.routes")); // ✅ ENABLED
 app.use("/api/supplier-items", require("./routes/supplierItem.routes")); // ✅ Supplier Catalog
-app.use("/api/purchase-orders", require("./routes/purchaseOrder.routes")); // ✅ ENABLED
-// app.use("/api/reports", require("./routes/report.routes")); // MongoDB syntax - commented out
-// app.use("/api/grn", grnRoutes); // comment until created
+app.use("/api/purchase-orders", require("./routes/purchaseOrder.routes")); // ✅ FIXED
+app.use("/api/grn", grnRoutes);
 app.use("/api/dashboard", require("./routes/dashboard.routes"));
 app.use("/api/categories", require("./routes/category.routes"));
 app.use("/api/items", require("./routes/item.routes"));
 app.use("/api/warehouses", require("./routes/warehouse.routes"));
 app.use("/api/stock-locations", require("./routes/stockLocation.routes"));
 app.use("/api/transfer-orders", require("./routes/transferOrder.routes"));
-app.use("/api/purchase-requests", require("./routes/purchaseRequest.routes"));
+app.use("/api/purchase-requests", require("./routes/purchaseRequest.routes")); // ✅ FIXED
+// app.use("/api/automatic-triggers", require("./routes/automaticTrigger.routes")); // Temporarily disabled
 
-// Test route
+// Main route
 app.get("/", (req, res) => {
   res.send("Backend + PostgreSQL Database connected");
 });
 
-// Simple test endpoint for supplier data (no auth)
-app.get("/test-suppliers", async (req, res) => {
-  try {
-    const { Item, Supplier } = require("./models");
-    const items = await Item.findAll({
-      include: [{ model: Supplier, as: 'preferredSupplier', required: false }],
-      limit: 5
-    });
-    
-    const result = items.map(item => ({
-      name: item.name,
-      sku: item.sku,
-      preferredSupplierId: item.preferredSupplierId,
-      unitPrice: item.unitPrice,
-      supplier: item.preferredSupplier ? {
-        id: item.preferredSupplier.id,
-        name: item.preferredSupplier.name,
-        email: item.preferredSupplier.email
-      } : null
-    }));
-    
-    res.json({ success: true, items: result });
-  } catch (error) {
-    res.json({ success: false, error: error.message });
-  }
-});
+
 
 // Global Express error handler
 app.use((error, req, res, next) => {
   console.error('❌ Express Error:', error.message);
-  console.error('Stack:', error.stack);
   res.status(500).json({
     success: false,
     message: 'Internal server error',
@@ -150,7 +112,7 @@ app.get("/api/db-status", async (req, res) => {
   }
 });
 
-// Seed data route (for testing)
+// Seed data route (for development)
 app.post("/api/seed-data", async (req, res) => {
   try {
     const seedDatabase = require("./seedData");
@@ -169,7 +131,7 @@ const connectWithRetry = async () => {
     return true;
   } catch (error) {
     console.error("❌ PostgreSQL connection failed:", error.message);
-    return false; // Don't retry automatically, just return false
+    return false;
   }
 };
 
@@ -178,9 +140,15 @@ const startServer = () => {
   const PORT = process.env.PORT || 5000;
   const server = app.listen(PORT, () => {
     console.log(`✅ Server started on port ${PORT}`);
+    
+    // Temporarily disable automatic triggers to debug
+    // try {
+    //   AutomaticTriggerService.startAutomaticTriggers();
+    // } catch (error) {
+    //   console.error('❌ Failed to start automatic triggers:', error.message);
+    // }
   });
 
-  // Keep server alive
   server.keepAliveTimeout = 120000;
   server.headersTimeout = 120000;
   
@@ -193,14 +161,11 @@ const startServer = () => {
     const connected = await connectWithRetry();
     
     if (connected) {
-      // Sync database with more detailed logging
-      console.log("Starting database synchronization...");
       try {
         await sequelize.sync({ force: false, alter: false, logging: false });
         console.log("Database synchronized successfully");
       } catch (syncError) {
         console.error("❌ Database sync error:", syncError);
-        console.log("⚠️ Continuing with server startup despite sync error...");
       }
 
       try {
@@ -217,7 +182,6 @@ const startServer = () => {
           console.log("✅ First admin created: admin@example.com / adminpassword");
         }
 
-        // Create default warehouses if none exist
         const { Warehouse } = require("./models");
         const warehouseCount = await Warehouse.count();
         
@@ -253,47 +217,37 @@ const startServer = () => {
               createdById: adminUser.id
             }
           ]);
-          console.log("✅ Default warehouses created");
         }
         
       } catch (err) {
         console.error("❌ Error checking/creating first admin:", err.message);
       }
-    } else {
-      console.log("⚠️ Starting server without database connection...");
     }
     
-    // Start server regardless of database status
     const server = startServer();
     
-    // Keep the process alive
     const keepAlive = setInterval(() => {
-      // This prevents the process from exiting
-      // console.log('Server heartbeat...');
-    }, 30000); // Every 30 seconds
+      // Keep process alive
+    }, 30000);
     
-    // Graceful shutdown handling
     process.on('SIGTERM', () => {
-      console.log('SIGTERM received, shutting down gracefully');
+      // AutomaticTriggerService.stopAutomaticTriggers(); // Temporarily disabled
       clearInterval(keepAlive);
       server.close(() => {
-        console.log('Process terminated');
         process.exit(0);
       });
     });
 
     process.on('SIGINT', () => {
-      console.log('SIGINT received, shutting down gracefully');
+      // AutomaticTriggerService.stopAutomaticTriggers(); // Temporarily disabled
       clearInterval(keepAlive);
       server.close(() => {
-        console.log('Process terminated');
         process.exit(0);
       });
     });
     
   } catch (error) {
     console.error("❌ Server startup error:", error);
-    console.log("🔄 Starting server anyway...");
     startServer();
   }
 })();

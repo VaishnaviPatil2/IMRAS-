@@ -66,18 +66,18 @@ const PurchaseOrder = sequelize.define('PurchaseOrder', {
     }
   },
   status: {
-    type: DataTypes.ENUM('draft', 'sent', 'acknowledged', 'partially_received', 'completed', 'cancelled'),
+    type: DataTypes.ENUM('draft', 'sent', 'acknowledged', 'delay_requested', 'partially_received', 'completed', 'cancelled'),
     defaultValue: 'draft'
-  },
-  priority: {
-    type: DataTypes.ENUM('low', 'medium', 'high', 'urgent'),
-    defaultValue: 'medium'
   },
   expectedDeliveryDate: {
     type: DataTypes.DATE,
     allowNull: true
   },
   actualDeliveryDate: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  proposedDeliveryDate: {
     type: DataTypes.DATE,
     allowNull: true
   },

@@ -16,7 +16,7 @@ const Layout = ({ children }) => {
 
   // 🔹 Updated menu with PR/PO modules and correct role-based access
   const menu = {
-    common: [{ name: "Dashboard", path: "/dashboard" }],
+    common: user.role !== 'supplier' ? [{ name: "Dashboard", path: "/dashboard" }] : [], // Remove dashboard for suppliers
 
     Admin: [
       { name: "Item & Catalog", path: "/items" },
@@ -32,18 +32,19 @@ const Layout = ({ children }) => {
       { name: "Stock & Warehouse", path: "/stock-warehouse" },
       { name: "Purchase Requests", path: "/purchase-requests" },
       { name: "Purchase Orders", path: "/purchase-orders" },
+      { name: "GRN", path: "/grn" },
       { name: "Suppliers", path: "/suppliers" },
     ],
 
     Warehouse: [
       { name: "Item & Catalog", path: "/items" },
       { name: "Stock & Warehouse", path: "/stock-warehouse" },
-      { name: "Purchase Requests", path: "/purchase-requests" },
       { name: "Purchase Orders", path: "/purchase-orders" },
+      { name: "GRN", path: "/grn" },
     ],
 
     Supplier: [
-      { name: "Purchase Orders", path: "/supplier-dashboard" },
+      { name: "My Purchase Orders", path: "/supplier-dashboard" },
     ],
   };
 

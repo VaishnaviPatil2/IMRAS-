@@ -19,6 +19,7 @@ const Sidebar = ({ role = "Admin", currentTab, setCurrentTab }) => {
       { name: "Inventory", key: "inventory" },
       { name: "PR", key: "pr" },
       { name: "PO", key: "po" },
+      { name: "GRN", key: "grn" }, // ✅ FIXED: Manager needs GRN access for approval
       { name: "Reports", key: "reports" },
     ],
 

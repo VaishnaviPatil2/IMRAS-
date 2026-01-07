@@ -41,7 +41,7 @@ const PurchaseRequest = sequelize.define('PurchaseRequest', {
   },
   reason: {
     type: DataTypes.ENUM('low_stock', 'out_of_stock', 'manual_request', 'reorder_point'),
-    defaultValue: 'low_stock'
+    defaultValue: 'manual_request'
   },
   status: {
     type: DataTypes.ENUM('pending', 'approved', 'rejected', 'converted_to_po'),
@@ -91,12 +91,47 @@ const PurchaseRequest = sequelize.define('PurchaseRequest', {
       // Generate prNumber if not set
       if (!pr.prNumber) {
         try {
-          // Get the current count to generate sequential number
-          const count = await PurchaseRequest.count({
-            transaction: options.transaction
-          });
-          pr.prNumber = `PR${String(count + 1).padStart(6, '0')}`;
-          console.log('🔢 Generated PR Number in hook:', pr.prNumber);
+          // Use a more robust method to avoid duplicates during concurrent creation
+          let attempts = 0;
+          const maxAttempts = 10;
+          
+          while (attempts < maxAttempts) {
+            // Get the highest existing PR number
+            const lastPR = await PurchaseRequest.findOne({
+              order: [['id', 'DESC']],
+              attributes: ['prNumber'],
+              transaction: options.transaction
+            });
+            
+            let nextNumber = 1;
+            if (lastPR && lastPR.prNumber) {
+              const match = lastPR.prNumber.match(/PR(\d+)/);
+              if (match) {
+                nextNumber = parseInt(match[1]) + 1;
+              }
+            }
+            
+            const candidateNumber = `PR${String(nextNumber).padStart(6, '0')}`;
+            
+            // Check if this number already exists
+            const existing = await PurchaseRequest.findOne({
+              where: { prNumber: candidateNumber },
+              transaction: options.transaction
+            });
+            
+            if (!existing) {
+              pr.prNumber = candidateNumber;
+              console.log('🔢 Generated PR Number in hook:', pr.prNumber);
+              break;
+            }
+            
+            attempts++;
+            // If we can't find a unique number, add random suffix
+            if (attempts >= maxAttempts) {
+              pr.prNumber = `PR${String(nextNumber + Math.floor(Math.random() * 1000)).padStart(6, '0')}`;
+              console.log('🔢 Generated PR Number with random suffix:', pr.prNumber);
+            }
+          }
         } catch (error) {
           console.error('❌ Error in beforeCreate hook:', error);
           // Fallback to timestamp-based number

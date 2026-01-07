@@ -9,6 +9,7 @@ const TransferOrder = require('./TransferOrder');
 const PurchaseRequest = require('./PurchaseRequest');
 const PurchaseOrder = require('./PurchaseOrder');
 const SupplierItem = require('./SupplierItem');
+const GRN = require('./GRN');
 
 // Define associations
 User.hasOne(Supplier, { foreignKey: 'userId', as: 'supplierProfile' });
@@ -66,6 +67,14 @@ PurchaseOrder.belongsTo(Item, { foreignKey: 'itemId', as: 'item' });
 PurchaseOrder.belongsTo(Warehouse, { foreignKey: 'warehouseId', as: 'warehouse' });
 PurchaseOrder.belongsTo(User, { foreignKey: 'createdById', as: 'createdBy' });
 PurchaseOrder.belongsTo(User, { foreignKey: 'approvedById', as: 'approvedBy' });
+PurchaseOrder.hasOne(GRN, { foreignKey: 'poId', as: 'grn' });
+
+// GRN associations
+GRN.belongsTo(PurchaseOrder, { foreignKey: 'poId', as: 'purchaseOrder' });
+GRN.belongsTo(Item, { foreignKey: 'itemId', as: 'item' });
+GRN.belongsTo(Warehouse, { foreignKey: 'warehouseId', as: 'warehouse' });
+GRN.belongsTo(User, { foreignKey: 'receivedById', as: 'receivedBy' });
+GRN.belongsTo(User, { foreignKey: 'approvedById', as: 'approvedBy' });
 
 // ✅ CORRECT: Many-to-Many Supplier-Item Relationships
 Supplier.belongsToMany(Item, { 
@@ -99,5 +108,6 @@ module.exports = {
   TransferOrder,
   PurchaseRequest,
   PurchaseOrder,
-  SupplierItem
+  SupplierItem,
+  GRN
 };

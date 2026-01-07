@@ -178,19 +178,7 @@ router.get("/", verifyUser, async (req, res) => {
   }
 });
 
-// 🧪 Simple ping test (No auth required) - MUST BE BEFORE /:id route
-router.get("/ping", async (req, res) => {
-  try {
-    console.log('Backend: Ping route hit');
-    res.json({
-      message: "Supplier routes are working",
-      timestamp: new Date().toISOString(),
-      server: "IMRAS Backend"
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+
 
 // 🔧 Fix admin user (No auth required - emergency route)
 router.post("/fix-admin", async (req, res) => {
@@ -296,21 +284,7 @@ router.get("/diagnose", verifyAdmin, async (req, res) => {
   }
 });
 
-// 🧪 Test route for debugging (Admin only) - MUST BE BEFORE /:id route
-router.get("/test/:id", verifyAdmin, async (req, res) => {
-  try {
-    console.log('Backend: Test route hit with ID:', req.params.id);
-    const supplier = await Supplier.findByPk(req.params.id);
-    res.json({
-      message: "Test route working",
-      supplierId: req.params.id,
-      supplierFound: !!supplier,
-      supplier: supplier ? { id: supplier.id, name: supplier.name, userId: supplier.userId } : null
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+
 
 // 🔑 Reset supplier password (Admin only) - MUST BE BEFORE /:id route
 router.post("/reset-password/:id", verifyAdmin, async (req, res) => {

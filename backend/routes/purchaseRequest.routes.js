@@ -20,6 +20,14 @@ const verifyManagerOrAdminOverride = (req, res, next) => {
   }
 };
 
+const verifyAdminManagerOrWarehouse = (req, res, next) => {
+  if (['admin', 'manager', 'warehouse'].includes(req.user.role)) {
+    next();
+  } else {
+    res.status(403).json({ success: false, message: 'Access denied' });
+  }
+};
+
 const verifyAdminOverride = (req, res, next) => {
   if (req.user.role === 'admin') {
     // Log admin override action
@@ -33,63 +41,17 @@ const verifyAdminOverride = (req, res, next) => {
 // Apply authentication middleware to all routes
 router.use(verifyUser);
 
-// Test route to check PR table and user auth
-router.get('/test', async (req, res) => {
-  try {
-    console.log('🧪 Testing PR module...');
-    console.log('User:', req.user);
-    
-    // Test database connection
-    const count = await PurchaseRequest.count();
-    console.log('PR table exists, count:', count);
-    
-    // Test user access
-    const { User, Item, Warehouse } = require('../models');
-    const user = await User.findByPk(req.user.id);
-    console.log('User from DB:', user ? user.name : 'Not found');
-    
-    // Test items and warehouses
-    const itemCount = await Item.count();
-    const warehouseCount = await Warehouse.count();
-    console.log('Items count:', itemCount);
-    console.log('Warehouses count:', warehouseCount);
-    
-    // Get sample items and warehouses
-    const sampleItems = await Item.findAll({ limit: 3, attributes: ['id', 'name', 'sku'] });
-    const sampleWarehouses = await Warehouse.findAll({ limit: 3, attributes: ['id', 'name', 'code'] });
-    
-    res.json({
-      success: true,
-      message: 'PR module test successful',
-      data: {
-        user: req.user,
-        prCount: count,
-        userExists: !!user,
-        itemCount,
-        warehouseCount,
-        sampleItems,
-        sampleWarehouses
-      }
-    });
-  } catch (error) {
-    console.error('❌ PR test error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'PR module test failed',
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
-  }
-});
-
 // GET /api/purchase-requests/low-stock-summary - Get low stock summary (Admin/Manager only)
 router.get('/low-stock-summary', verifyAdminOrManager, purchaseRequestController.getLowStockSummary);
 
-// POST /api/purchase-requests/auto-generate - Trigger automatic PO generation (Admin/Manager only)
-router.post('/auto-generate', verifyAdminOrManager, purchaseRequestController.triggerAutoPoGeneration);
+// POST /api/purchase-requests/auto-generate - Trigger automatic PO generation (Admin/Manager/Warehouse)
+router.post('/auto-generate', verifyAdminManagerOrWarehouse, purchaseRequestController.triggerAutoPoGeneration);
 
 // GET /api/purchase-requests - Get all purchase requests (Role-based filtering in controller)
 router.get('/', purchaseRequestController.getAllPurchaseRequests);
+
+// POST /api/purchase-requests/validate-quantity - Validate quantity before submission
+router.post('/validate-quantity', verifyManagerOrAdminOverride, purchaseRequestController.validateQuantity);
 
 // POST /api/purchase-requests - Create new purchase request (Manager + Admin override)
 router.post('/', verifyManagerOrAdminOverride, purchaseRequestController.createPurchaseRequest);

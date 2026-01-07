@@ -5,8 +5,8 @@ const { Op } = require("sequelize");
 // HELPER FUNCTION: Calculate Effective Reorder Threshold
 // =========================
 const calculateEffectiveReorderThreshold = (stockLocation, item) => {
-  // Item-level reorder threshold: reorderPoint + safetyStock
-  const itemReorderThreshold = (item.reorderPoint || 0) + (item.safetyStock || 0);
+  // Use reorderPoint directly as it already includes safetyStock in scientific formula
+  const itemReorderThreshold = item.reorderPoint || 0;
   
   // Use the higher of: location minStock OR item reorder threshold
   return Math.max(stockLocation.minStock || 0, itemReorderThreshold);
@@ -118,7 +118,7 @@ exports.getAllStockLocations = async (req, res) => {
       const item = locationData.item;
       
       // Calculate effective reorder threshold
-      const itemReorderThreshold = (item.reorderPoint || 0) + (item.safetyStock || 0);
+      const itemReorderThreshold = item.reorderPoint || 0;
       const effectiveMinimum = Math.max(locationData.minStock || 0, itemReorderThreshold);
       
       // Determine stock status
@@ -349,9 +349,38 @@ exports.createStockLocation = async (req, res) => {
       ]
     });
 
+    // 🚀 TRIGGER AUTOMATIC SYSTEM AFTER STOCK LOCATION CREATION
+    let automaticTriggerResult = null;
+    if (parsedCurrentStock !== undefined) {
+      console.log(`📦 New stock location created: ${locationCode} with ${parsedCurrentStock} stock`);
+      
+      // Trigger automatic check SYNCHRONOUSLY
+      try {
+        const AutomaticTriggerService = require('../services/automaticTriggerService');
+        
+        console.log('🔄 Triggering automatic check after stock location creation...');
+        automaticTriggerResult = await AutomaticTriggerService.executeAutomaticCheck();
+        
+        if (automaticTriggerResult && automaticTriggerResult.prsCreated > 0) {
+          console.log(`✅ Automatic trigger created ${automaticTriggerResult.prsCreated} PRs`);
+        }
+        
+      } catch (triggerError) {
+        console.error('⚠️ Failed to trigger automatic check:', triggerError.message);
+        // Don't fail the stock creation if automatic trigger fails
+      }
+    }
+
     res.status(201).json({
       message: "Stock location created successfully",
-      stockLocation: createdStockLocation
+      stockLocation: createdStockLocation,
+      automaticTrigger: automaticTriggerResult ? {
+        prsCreated: automaticTriggerResult.prsCreated || 0,
+        posCreated: automaticTriggerResult.posCreated || 0,
+        message: automaticTriggerResult.prsCreated > 0 ? 
+          `Automatic system created ${automaticTriggerResult.prsCreated} PRs and ${automaticTriggerResult.posCreated} POs` :
+          'No automatic PRs/POs created (stock sufficient or PRs already exist)'
+      } : null
     });
   } catch (error) {
     console.error("Create stock location error:", error);
@@ -408,6 +437,28 @@ exports.updateStockLocation = async (req, res) => {
       updatedById: req.user.id
     });
 
+    // 🚀 TRIGGER AUTOMATIC SYSTEM AFTER STOCK UPDATE
+    let automaticTriggerResult = null;
+    if (currentStock !== undefined) {
+      console.log(`📦 Stock updated for ${stockLocation.locationCode}: ${stockLocation.currentStock} → ${newCurrentStock}`);
+      
+      // Trigger automatic check SYNCHRONOUSLY so frontend gets immediate feedback
+      try {
+        const AutomaticTriggerService = require('../services/automaticTriggerService');
+        
+        console.log('🔄 Triggering automatic check after stock update...');
+        automaticTriggerResult = await AutomaticTriggerService.executeAutomaticCheck();
+        
+        if (automaticTriggerResult && automaticTriggerResult.prsCreated > 0) {
+          console.log(`✅ Automatic trigger created ${automaticTriggerResult.prsCreated} PRs`);
+        }
+        
+      } catch (triggerError) {
+        console.error('⚠️ Failed to trigger automatic check:', triggerError.message);
+        // Don't fail the stock update if automatic trigger fails
+      }
+    }
+
     const updatedStockLocation = await StockLocation.findByPk(id, {
       include: [
         { model: Warehouse, as: 'warehouse', attributes: ['id', 'name', 'code'] },
@@ -426,7 +477,14 @@ exports.updateStockLocation = async (req, res) => {
 
     res.json({
       message: "Stock location updated successfully",
-      stockLocation: updatedStockLocation
+      stockLocation: updatedStockLocation,
+      automaticTrigger: automaticTriggerResult ? {
+        prsCreated: automaticTriggerResult.prsCreated || 0,
+        posCreated: automaticTriggerResult.posCreated || 0,
+        message: automaticTriggerResult.prsCreated > 0 ? 
+          `Automatic system created ${automaticTriggerResult.prsCreated} PRs and ${automaticTriggerResult.posCreated} POs` :
+          'No automatic PRs/POs created (stock sufficient or PRs already exist)'
+      } : null
     });
   } catch (error) {
     console.error("Update stock location error:", error);
@@ -492,20 +550,46 @@ exports.getLowStockItems = async (req, res) => {
     const lowStockItems = stockLocations.filter(location => {
       const item = location.item;
       
-      // Calculate total reorder threshold: Item's reorderPoint + safetyStock
-      const itemReorderThreshold = (item.reorderPoint || 0) + (item.safetyStock || 0);
+      // Use reorderPoint directly as it already includes safetyStock in scientific formula
+      const itemReorderThreshold = item.reorderPoint || 0;
       
       // Use the higher of: location minStock OR item reorder threshold
-      const effectiveMinimum = Math.max(location.minStock, itemReorderThreshold);
+      const effectiveMinimum = Math.max(location.minStock || 0, itemReorderThreshold);
       
       // Item is low stock if current stock <= effective minimum
+      // This includes: out_of_stock (0), very_low_stock (<= 50% of effective minimum), and low_stock (<= effective minimum)
       return location.currentStock <= effectiveMinimum;
     });
 
-    // Sort by urgency (lowest stock first)
-    lowStockItems.sort((a, b) => a.currentStock - b.currentStock);
+    // Add stock status to each item for frontend display
+    const lowStockItemsWithStatus = lowStockItems.map(location => {
+      const item = location.item;
+      const itemReorderThreshold = item.reorderPoint || 0;
+      const effectiveMinimum = Math.max(location.minStock || 0, itemReorderThreshold);
+      
+      // Calculate stock status
+      let stockStatus;
+      if (location.currentStock === 0) {
+        stockStatus = 'out_of_stock';
+      } else if (location.currentStock <= (effectiveMinimum * 0.5)) {
+        stockStatus = 'very_low_stock';
+      } else if (location.currentStock <= effectiveMinimum) {
+        stockStatus = 'low_stock';
+      } else {
+        stockStatus = 'sufficient';
+      }
 
-    res.json(lowStockItems);
+      return {
+        ...location.toJSON(),
+        effectiveMinimum,
+        stockStatus
+      };
+    });
+
+    // Sort by urgency (lowest stock first)
+    lowStockItemsWithStatus.sort((a, b) => a.currentStock - b.currentStock);
+
+    res.json(lowStockItemsWithStatus);
   } catch (error) {
     console.error("Get low stock items error:", error);
     res.status(500).json({ error: error.message });
