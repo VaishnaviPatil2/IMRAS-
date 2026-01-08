@@ -111,14 +111,11 @@ const StockWarehouse = () => {
         const warehouseResponse = await warehouseApi.getAll({ active: 'true', limit: 1000 });
         console.log('Basic warehouses response:', warehouseResponse.data);
         if (warehouseResponse.data && Array.isArray(warehouseResponse.data)) {
-          // Don't overwrite warehouses if we're on warehouses tab (to avoid conflicts)
-          if (activeTab !== 'warehouses') {
-            setWarehouses(warehouseResponse.data);
-          }
+          setWarehouses(warehouseResponse.data);
         }
         
-        // Load items for dropdowns
-        const itemResponse = await itemApi.getAll({ active: 'true', limit: 1000 });
+        // Load items for dropdowns (limited for performance)
+        const itemResponse = await itemApi.getAll({ active: 'true', limit: 100 });
         console.log('Basic items response:', itemResponse.data);
         if (itemResponse.data && itemResponse.data.items && Array.isArray(itemResponse.data.items)) {
           setItems(itemResponse.data.items);
@@ -564,7 +561,7 @@ const StockWarehouse = () => {
               <select
                 value={filters.warehouse}
                 onChange={(e) => setFilters({...filters, warehouse: e.target.value})}
-                className="border border-gray-300 rounded-md px-3 py-2"
+                className="border border-gray-300 rounded-md px-3 py-2 text-left"
               >
                 <option value="">All Warehouses</option>
                 {warehouses.map(warehouse => (
@@ -576,7 +573,8 @@ const StockWarehouse = () => {
               <select
                 value={filters.stockStatus}
                 onChange={(e) => setFilters({...filters, stockStatus: e.target.value})}
-                className="border border-gray-300 rounded-md px-3 py-2"
+                className="border border-gray-300 rounded-md px-3 py-2 text-left"
+                style={{ textAlign: 'left', direction: 'ltr' }}
               >
                 <option value="">All Stock Status</option>
                 <option value="out">Out of Stock</option>
@@ -1682,7 +1680,7 @@ const StockWarehouse = () => {
                   <select
                     value={stockLocationForm.warehouseId}
                     onChange={(e) => setStockLocationForm({...stockLocationForm, warehouseId: e.target.value})}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-left"
                     required
                     disabled={editingItem} // Disable when editing
                   >
@@ -1703,7 +1701,7 @@ const StockWarehouse = () => {
                   <select
                     value={stockLocationForm.itemId}
                     onChange={(e) => setStockLocationForm({...stockLocationForm, itemId: e.target.value})}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-left"
                     required
                     disabled={editingItem} // Disable when editing
                   >
@@ -1726,7 +1724,7 @@ const StockWarehouse = () => {
                       type="text"
                       value={stockLocationForm.aisle}
                       onChange={(e) => setStockLocationForm({...stockLocationForm, aisle: e.target.value})}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-left"
                       required
                     />
                   </div>
@@ -1737,7 +1735,7 @@ const StockWarehouse = () => {
                       type="text"
                       value={stockLocationForm.rack}
                       onChange={(e) => setStockLocationForm({...stockLocationForm, rack: e.target.value})}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-left"
                       required
                     />
                   </div>
@@ -1748,7 +1746,7 @@ const StockWarehouse = () => {
                       type="text"
                       value={stockLocationForm.bin}
                       onChange={(e) => setStockLocationForm({...stockLocationForm, bin: e.target.value})}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-left"
                       required
                     />
                   </div>
@@ -1762,7 +1760,7 @@ const StockWarehouse = () => {
                       min="0"
                       value={stockLocationForm.minStock}
                       onChange={(e) => setStockLocationForm({...stockLocationForm, minStock: parseInt(e.target.value)})}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-left"
                       required
                     />
                   </div>
@@ -1774,7 +1772,7 @@ const StockWarehouse = () => {
                       min="1"
                       value={stockLocationForm.maxStock}
                       onChange={(e) => setStockLocationForm({...stockLocationForm, maxStock: parseInt(e.target.value)})}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-left"
                       required
                     />
                   </div>
@@ -1786,7 +1784,7 @@ const StockWarehouse = () => {
                       min="0"
                       value={stockLocationForm.currentStock}
                       onChange={(e) => setStockLocationForm({...stockLocationForm, currentStock: parseInt(e.target.value)})}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-left"
                       required
                     />
                   </div>

@@ -1,4 +1,4 @@
-const { Item, Category, User, Supplier } = require("../models");
+const { Item, Category, User, Supplier, StockLocation, PurchaseRequest, PurchaseOrder } = require("../models");
 const { Op } = require("sequelize");
 
 // =========================
@@ -257,6 +257,30 @@ exports.deleteItem = async (req, res) => {
     const item = await Item.findByPk(id);
     if (!item) {
       return res.status(404).json({ error: "Item not found" });
+    }
+
+    // Check if item is used in stock locations
+    const stockLocationCount = await StockLocation.count({ where: { itemId: id } });
+    if (stockLocationCount > 0) {
+      return res.status(400).json({ 
+        error: `Cannot delete item. It is used in ${stockLocationCount} stock location(s). Please remove all stock locations first.` 
+      });
+    }
+
+    // Check if item is used in purchase requests
+    const prCount = await PurchaseRequest.count({ where: { itemId: id } });
+    if (prCount > 0) {
+      return res.status(400).json({ 
+        error: `Cannot delete item. It is used in ${prCount} purchase request(s).` 
+      });
+    }
+
+    // Check if item is used in purchase orders
+    const poCount = await PurchaseOrder.count({ where: { itemId: id } });
+    if (poCount > 0) {
+      return res.status(400).json({ 
+        error: `Cannot delete item. It is used in ${poCount} purchase order(s).` 
+      });
     }
 
     await item.destroy();
