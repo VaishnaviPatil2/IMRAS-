@@ -94,7 +94,7 @@ exports.createPurchaseRequest = async (req, res) => {
 
     // Validate required fields
     if (!itemId || !warehouseId || !requestedQuantity) {
-      console.log('❌ Missing required fields:', { itemId, warehouseId, requestedQuantity });
+      console.log('Missing required fields:', { itemId, warehouseId, requestedQuantity });
       return res.status(400).json({
         success: false,
         message: 'Missing required fields: itemId, warehouseId, and requestedQuantity are required'
@@ -103,16 +103,16 @@ exports.createPurchaseRequest = async (req, res) => {
 
     // Validate user
     if (!req.user || !req.user.id) {
-      console.log('❌ No user found in request');
+      console.log('No user found in request');
       return res.status(401).json({
         success: false,
         message: 'User authentication required'
       });
     }
 
-    console.log('✅ Validation passed, creating PR...');
+    console.log('Validation passed, creating PR...');
 
-    // ===== BASIC QUANTITY VALIDATION =====
+    // Basic quantity validation
     // Simple validation - just check if quantity is positive
     if (parseInt(requestedQuantity) <= 0) {
       return res.status(400).json({
@@ -120,7 +120,7 @@ exports.createPurchaseRequest = async (req, res) => {
         message: 'Requested quantity must be greater than zero'
       });
     }
-    // ===== END BASIC VALIDATION =====
+    // End basic validation
 
     // Always generate PR number in controller to ensure it's set
     const lastPR = await PurchaseRequest.findOne({
@@ -151,7 +151,7 @@ exports.createPurchaseRequest = async (req, res) => {
       preferredSupplierId: preferredSupplierId ? parseInt(preferredSupplierId) : null
     });
 
-    console.log('✅ PR created with ID:', purchaseRequest.id);
+    console.log('PR created with ID:', purchaseRequest.id);
 
     const createdPR = await PurchaseRequest.findByPk(purchaseRequest.id, {
       include: [
@@ -178,7 +178,7 @@ exports.createPurchaseRequest = async (req, res) => {
       ]
     });
 
-    console.log('✅ PR created successfully:', createdPR.prNumber);
+    console.log('PR created successfully:', createdPR.prNumber);
 
     res.status(201).json({
       success: true,
@@ -187,7 +187,7 @@ exports.createPurchaseRequest = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error creating purchase request:', error);
+    console.error('Error creating purchase request:', error);
     console.error('Error details:', {
       message: error.message,
       stack: error.stack,
@@ -295,7 +295,7 @@ exports.updatePurchaseRequestStatus = async (req, res) => {
 // Trigger automatic low stock check and PR generation
 exports.triggerAutoPoGeneration = async (req, res) => {
   try {
-    console.log(`🚀 ${req.user.name} (${req.user.role}) triggered automatic PR generation`);
+    console.log(`${req.user.name} (${req.user.role}) triggered automatic PR generation`);
     
     // Use inline implementation since module exports have issues
     const { StockLocation, Item, Warehouse, Supplier, PurchaseRequest, PurchaseOrder, User } = require('../models');
@@ -327,7 +327,7 @@ exports.triggerAutoPoGeneration = async (req, res) => {
       return location.currentStock <= effectiveMinimum;
     });
 
-    console.log(`📊 Found ${lowStockLocations.length} low stock locations`);
+    console.log(`Found ${lowStockLocations.length} low stock locations`);
 
     let prsCreated = 0;
     let prsAutoApproved = 0;
@@ -341,7 +341,7 @@ exports.triggerAutoPoGeneration = async (req, res) => {
         const item = location.item;
         const warehouse = location.warehouse;
         
-        console.log(`🔍 DEBUG: Auto trigger - Item from location:`, {
+        console.log(`DEBUG: Auto trigger - Item from location:`, {
           id: item.id,
           name: item.name,
           sku: item.sku,
@@ -392,9 +392,9 @@ exports.triggerAutoPoGeneration = async (req, res) => {
         
         let urgencyLevel = 'medium';
         if (location.currentStock === 0) {
-          urgencyLevel = 'urgent';  // 🔴 OUT OF STOCK
+          urgencyLevel = 'urgent';  // OUT OF STOCK
         } else if (location.currentStock <= (effectiveMinimum * 0.5)) {
-          urgencyLevel = 'high';    // 🟡 VERY LOW STOCK
+          urgencyLevel = 'high';    // VERY LOW STOCK
         }
 
         // Create PR
@@ -405,12 +405,12 @@ exports.triggerAutoPoGeneration = async (req, res) => {
           urgencyLevel: urgencyLevel,
           reason: urgencyLevel === 'urgent' ? 'out_of_stock' : 'low_stock',
           status: 'pending',
-          notes: `${urgencyLevel === 'urgent' ? '🚨 URGENT' : urgencyLevel === 'high' ? '🟡 HIGH' : '🟨 MEDIUM'} Auto-generated PR - Current: ${location.currentStock}, Min: ${location.minStock}, Max: ${location.maxStock}`,
+          notes: `${urgencyLevel === 'urgent' ? 'URGENT' : urgencyLevel === 'high' ? 'HIGH' : 'MEDIUM'} Auto-generated PR - Current: ${location.currentStock}, Min: ${location.minStock}, Max: ${location.maxStock}`,
           requestedById: systemUser.id,
           isAutoGenerated: true
         });
 
-        console.log(`✅ Created PR ${pr.prNumber} for ${item.name} (${urgencyLevel.toUpperCase()})`);
+        console.log(`Created PR ${pr.prNumber} for ${item.name} (${urgencyLevel.toUpperCase()})`);
         prsCreated++;
 
         // Apply industry standard logic based on priority
@@ -421,7 +421,7 @@ exports.triggerAutoPoGeneration = async (req, res) => {
             approvedById: systemUser.id,
             approvedAt: new Date()
           });
-          console.log(`🚀 Auto-approved ${urgencyLevel.toUpperCase()} PR ${pr.prNumber}`);
+          console.log(`Auto-approved ${urgencyLevel.toUpperCase()} PR ${pr.prNumber}`);
           prsAutoApproved++;
 
           // Create PO for approved PR
@@ -454,7 +454,7 @@ exports.triggerAutoPoGeneration = async (req, res) => {
               }
               
               const unitPrice = fullItem.unitPrice;
-              console.log(`✅ Using actual unit price: ${unitPrice} for ${fullItem.name}`);
+              console.log(`Using actual unit price: ${unitPrice} for ${fullItem.name}`);
               
               const totalAmount = pr.requestedQuantity * unitPrice;
               
@@ -487,7 +487,7 @@ exports.triggerAutoPoGeneration = async (req, res) => {
               // Update PR status
               await pr.update({ status: 'converted_to_po' });
 
-              console.log(`✅ Created PO ${po.poNumber} from PR ${pr.prNumber}`);
+              console.log(`Created PO ${po.poNumber} from PR ${pr.prNumber}`);
               posCreated++;
 
               // For URGENT: Auto send to supplier (bypass admin)
@@ -496,9 +496,9 @@ exports.triggerAutoPoGeneration = async (req, res) => {
                   status: 'sent',
                   sentAt: new Date()
                 });
-                console.log(`📧 URGENT PO ${po.poNumber} sent directly to supplier (BYPASSED ADMIN)`);
+                console.log(`URGENT PO ${po.poNumber} sent directly to supplier (BYPASSED ADMIN)`);
               } else {
-                console.log(`🟡 HIGH PO ${po.poNumber} created - Awaiting admin approval`);
+                console.log(`HIGH PO ${po.poNumber} created - Awaiting admin approval`);
               }
             }
           } catch (poError) {
@@ -507,11 +507,11 @@ exports.triggerAutoPoGeneration = async (req, res) => {
           }
         } else {
           // MEDIUM: PR stays pending for manual approval
-          console.log(`⏳ MEDIUM PR ${pr.prNumber} created - Awaiting manager approval`);
+          console.log(`MEDIUM PR ${pr.prNumber} created - Awaiting manager approval`);
         }
 
       } catch (error) {
-        console.error(`❌ Error processing location ${location.id}:`, error.message);
+        console.error(`Error processing location ${location.id}:`, error.message);
         errors.push(`Location ${location.id}: ${error.message}`);
       }
     }
@@ -581,7 +581,7 @@ exports.createPOFromPR = async (req, res) => {
       });
     }
 
-    // ✅ CHECK: Prevent duplicate PO creation from same PR
+    // Check: Prevent duplicate PO creation from same PR
     const existingPO = await PurchaseOrder.findOne({
       where: { prId: id }
     });
@@ -673,7 +673,7 @@ exports.createPOFromPR = async (req, res) => {
       isAutoGenerated: false // This is a manual PO creation
     });
 
-    console.log(`✅ Manual PO ${po.poNumber} created from PR ${purchaseRequest.prNumber} by ${req.user.name}`);
+    console.log(`Manual PO ${po.poNumber} created from PR ${purchaseRequest.prNumber} by ${req.user.name}`);
 
     // Load the complete PO with relations for response
     const completePO = await PurchaseOrder.findByPk(po.id, {
@@ -775,7 +775,7 @@ exports.editPurchaseRequest = async (req, res) => {
 
     // Log admin override if applicable
     if (req.user.role === 'admin') {
-      console.log(`🚨 Admin Override: ${req.user.name} edited PR ${purchaseRequest.prNumber}`);
+      console.log(`Admin Override: ${req.user.name} edited PR ${purchaseRequest.prNumber}`);
     }
 
     await purchaseRequest.update({
@@ -861,7 +861,7 @@ exports.deletePurchaseRequest = async (req, res) => {
 
     // Log admin override if applicable
     if (req.user.role === 'admin') {
-      console.log(`🚨 Admin Override: ${req.user.name} deleted PR ${purchaseRequest.prNumber} - Reason: ${reason}`);
+      console.log(`Admin Override: ${req.user.name} deleted PR ${purchaseRequest.prNumber} - Reason: ${reason}`);
     }
 
     // Log deletion for audit trail

@@ -26,7 +26,7 @@ exports.getAllPurchaseOrders = async (req, res) => {
     } else if (req.user.role === 'manager') {
       accessLevel = 'view'; // Can view all, monitor, but not approve
     } else if (req.user.role === 'warehouse') {
-      // ✅ WAREHOUSE RESTRICTION: Only see ACKNOWLEDGED POs (exclude completed and rejected)
+      // Warehouse restriction: Only see acknowledged POs
       accessLevel = 'limited';
       // Warehouse can only see POs that are acknowledged (ready for GRN creation)
       // Exclude completed and rejected POs
@@ -108,7 +108,7 @@ exports.getSupplierPurchaseOrders = async (req, res) => {
       });
     }
 
-    // ✅ FIXED: Suppliers should only see POs that are SENT to them
+    // Suppliers should only see POs that are sent to them
     // Draft POs should NOT be visible to suppliers until approved and sent
     const whereClause = { 
       supplierId: supplier.id,
@@ -229,7 +229,7 @@ exports.respondToPurchaseOrder = async (req, res) => {
     switch (action) {
       case 'accept':
         updateData.status = 'acknowledged';
-        // ✅ FIXED: Don't set actualDeliveryDate on accept - only update expectedDeliveryDate if supplier proposes a different date
+        // Don't set actualDeliveryDate on accept
         if (proposedDeliveryDate) {
           updateData.expectedDeliveryDate = proposedDeliveryDate;
         }
@@ -267,7 +267,7 @@ exports.respondToPurchaseOrder = async (req, res) => {
             message: 'Proposed delivery date is required for delay requests'
           });
         }
-        // ✅ FIXED: Delay requests need approval - don't auto-update delivery date
+        // Delay requests need approval
         updateData.status = 'delay_requested';
         updateData.proposedDeliveryDate = proposedDeliveryDate; // Store proposed date separately
         // Keep original expectedDeliveryDate until approved
@@ -275,7 +275,7 @@ exports.respondToPurchaseOrder = async (req, res) => {
         emailContent = `
           Purchase Order ${purchaseOrder.poNumber} delivery delay requested by ${supplier.name}.
           
-          ⚠️ APPROVAL REQUIRED by Inventory Manager or Admin
+          Delay request requires approval by Inventory Manager or Admin
           
           Order Details:
           - Item: ${purchaseOrder.item.name}
@@ -583,8 +583,7 @@ exports.editPurchaseOrder = async (req, res) => {
       });
     }
 
-    // Log admin action
-    console.log(`🔧 Admin Edit: ${req.user.name} edited PO ${purchaseOrder.poNumber}`);
+    console.log(`Admin Edit: ${req.user.name} edited PO ${purchaseOrder.poNumber}`);
 
     // Calculate new total amount if quantity or price changed
     const newOrderedQuantity = orderedQuantity || purchaseOrder.orderedQuantity;
@@ -799,8 +798,7 @@ exports.cancelPurchaseOrder = async (req, res) => {
       });
     }
 
-    // Log admin action
-    console.log(`🚫 Admin Cancel: ${req.user.name} cancelled PO ${purchaseOrder.poNumber} - Reason: ${reason}`);
+    console.log(`Admin Cancel: ${req.user.name} cancelled PO ${purchaseOrder.poNumber} - Reason: ${reason}`);
 
     await purchaseOrder.update({
       status: 'cancelled',

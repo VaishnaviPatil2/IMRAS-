@@ -8,7 +8,7 @@ const { verifyUser } = require("../middleware/authMiddleware");
 
 router.get("/", verifyUser, async (req, res) => {
   try {
-    console.log(`🔄 Dashboard request from user: ${req.user.role} (ID: ${req.user.id})`);
+    console.log(`Dashboard request from user: ${req.user.role} (ID: ${req.user.id})`);
     const startTime = Date.now();
     
     const role = req.user.role;
@@ -179,7 +179,7 @@ router.get("/", verifyUser, async (req, res) => {
     }
 
     const endTime = Date.now();
-    console.log(`✅ Dashboard query completed in ${endTime - startTime}ms`);
+    console.log(`Dashboard query completed in ${endTime - startTime}ms`);
 
     res.json({
       role,
@@ -254,7 +254,7 @@ router.get("/", verifyUser, async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Dashboard error:", error);
+    console.error("Dashboard error:", error);
     res.status(500).json({ error: error.message });
   }
 });

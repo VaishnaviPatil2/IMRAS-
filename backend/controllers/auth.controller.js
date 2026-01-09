@@ -2,69 +2,13 @@ const { User, Supplier } = require("../models");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-// =========================
-// REGISTER USER
-// =========================
-exports.register = async (req, res) => {
-  try {
-    const { name, email, password, role } = req.body;
-
-    console.log("Register payload:", req.body);
-
-    if (!name || !email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Name, email, and password are required" });
-    }
-
-    const existingUser = await User.findOne({ where: { email } });
-    if (existingUser) {
-      return res.status(400).json({ message: "Email already registered" });
-    }
-
-    // ------------------------
-    // SAFE ROLE ASSIGNMENT
-    // ------------------------
-    let assignedRole = "warehouse"; // default public register
-
-    if (req.user?.role === "admin" && role) {
-      if (["admin", "manager", "warehouse", "supplier"].includes(role)) {
-        assignedRole = role;
-      }
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      role: assignedRole,
-    });
-
-    console.log("✅ User saved:", user.email, "Role:", user.role);
-
-    res.status(201).json({
-      message: "User registered successfully",
-      role: user.role,
-    });
-  } catch (error) {
-    console.error("Register error:", error.message);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// =========================
-// LOGIN USER
-// =========================
+// Login
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required" });
+      return res.status(400).json({ message: "Email and password are required" });
     }
 
     const user = await User.findOne({ where: { email } });
@@ -77,11 +21,7 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Wrong password" });
     }
 
-    // ------------------------
-    // SUPPLIER ID ATTACHMENT
-    // ------------------------
     let supplierId = null;
-
     if (user.role === "supplier") {
       const supplier = await Supplier.findOne({ where: { userId: user.id } });
       if (supplier) {
@@ -108,14 +48,11 @@ exports.login = async (req, res) => {
       supplierId,
     });
   } catch (error) {
-    console.error("Login error:", error.message);
     res.status(500).json({ error: error.message });
   }
 };
 
-// =========================
-// ADMIN: CREATE USER WITH ANY ROLE
-// =========================
+// Create user (Admin only)
 exports.createUserByAdmin = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -146,21 +83,16 @@ exports.createUserByAdmin = async (req, res) => {
       role,
     });
 
-    console.log("✅ Admin created user:", user.email, "Role:", user.role);
-
     res.status(201).json({
       message: "User created successfully",
       role: user.role,
     });
   } catch (error) {
-    console.error("Admin create user error:", error.message);
     res.status(500).json({ error: error.message });
   }
 };
 
-// =========================
-// ADMIN: UPDATE USER ROLE
-// =========================
+// Update user role (Admin only)
 exports.updateUserRole = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -182,26 +114,16 @@ exports.updateUserRole = async (req, res) => {
     user.role = role;
     await user.save();
 
-    console.log(
-      "✅ Admin updated user role:",
-      user.email,
-      "New Role:",
-      user.role
-    );
-
     res.json({
       message: `Role updated to ${role}`,
       user,
     });
   } catch (error) {
-    console.error("Admin update role error:", error.message);
     res.status(500).json({ error: error.message });
   }
 };
 
-// =========================
-// ADMIN: GET ALL USERS
-// =========================
+// Get all users (Admin only)
 exports.getAllUsers = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -218,14 +140,11 @@ exports.getAllUsers = async (req, res) => {
       users
     });
   } catch (error) {
-    console.error("Get all users error:", error.message);
     res.status(500).json({ error: error.message });
   }
 };
 
-// =========================
-// ADMIN: DELETE USER
-// =========================
+// Delete user (Admin only)
 exports.deleteUser = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -234,7 +153,6 @@ exports.deleteUser = async (req, res) => {
 
     const { id } = req.params;
 
-    // Prevent admin from deleting themselves
     if (parseInt(id) === req.user.id) {
       return res.status(400).json({ message: "Cannot delete your own account" });
     }
@@ -246,13 +164,10 @@ exports.deleteUser = async (req, res) => {
 
     await user.destroy();
 
-    console.log("✅ Admin deleted user:", user.email);
-
     res.json({
       message: "User deleted successfully"
     });
   } catch (error) {
-    console.error("Delete user error:", error.message);
     res.status(500).json({ error: error.message });
   }
 };

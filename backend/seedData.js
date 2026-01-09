@@ -15,7 +15,7 @@ const seedDatabase = async () => {
         password: hashedPassword,
         role: 'admin'
       });
-      console.log('✅ Admin user created');
+      console.log('Admin user created');
     }
 
     const managerExists = await User.findOne({ where: { email: 'manager@example.com' } });
@@ -27,7 +27,7 @@ const seedDatabase = async () => {
         password: hashedPassword,
         role: 'manager'
       });
-      console.log('✅ Manager user created');
+      console.log('Manager user created');
     }
 
     const warehouseExists = await User.findOne({ where: { email: 'warehouse@example.com' } });
@@ -39,7 +39,7 @@ const seedDatabase = async () => {
         password: hashedPassword,
         role: 'warehouse'
       });
-      console.log('✅ Warehouse user created');
+      console.log('Warehouse user created');
     }
 
     // Get admin user for foreign keys
@@ -68,7 +68,7 @@ const seedDatabase = async () => {
           createdById: adminUser.id
         }
       ]);
-      console.log('✅ Categories created');
+      console.log('Categories created');
     }
 
     // Create warehouses if they don't exist
@@ -96,7 +96,7 @@ const seedDatabase = async () => {
           createdById: adminUser.id
         }
       ]);
-      console.log('✅ Warehouses created');
+      console.log('Warehouses created');
     }
 
     // Create suppliers if they don't exist
@@ -137,7 +137,7 @@ const seedDatabase = async () => {
           createdById: adminUser.id
         }
       ]);
-      console.log('✅ Suppliers created');
+      console.log('Suppliers created');
     }
 
     // Create items if they don't exist
@@ -242,7 +242,7 @@ const seedDatabase = async () => {
           createdById: adminUser.id
         }
       ]);
-      console.log('✅ Items created');
+      console.log('Items created');
     }
 
     // Create stock locations if they don't exist
@@ -273,7 +273,7 @@ const seedDatabase = async () => {
       });
       
       await StockLocation.bulkCreate(stockLocations);
-      console.log('✅ Stock locations created');
+      console.log('Stock locations created');
     }
 
     console.log('🌱 Database seeding completed successfully!');
@@ -290,7 +290,7 @@ const seedDatabase = async () => {
     return summary;
 
   } catch (error) {
-    console.error('❌ Database seeding failed:', error);
+    console.error('Database seeding failed:', error);
     throw error;
   }
 };

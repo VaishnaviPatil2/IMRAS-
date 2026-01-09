@@ -57,7 +57,7 @@ router.post('/stop', verifyAdminOrManager, (req, res) => {
 // POST /api/automatic-triggers/run-now - Manually trigger one execution
 router.post('/run-now', verifyAdminOrManager, async (req, res) => {
   try {
-    console.log(`🚀 ${req.user.name} (${req.user.role}) manually triggered automatic check`);
+    console.log(`${req.user.name} (${req.user.role}) manually triggered automatic check`);
     await AutomaticTriggerService.executeAutomaticCheck();
     res.json({
       success: true,

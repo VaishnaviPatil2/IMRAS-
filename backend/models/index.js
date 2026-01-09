@@ -76,7 +76,7 @@ GRN.belongsTo(Warehouse, { foreignKey: 'warehouseId', as: 'warehouse' });
 GRN.belongsTo(User, { foreignKey: 'receivedById', as: 'receivedBy' });
 GRN.belongsTo(User, { foreignKey: 'approvedById', as: 'approvedBy' });
 
-// ✅ CORRECT: Many-to-Many Supplier-Item Relationships
+// Supplier-Item relationships
 Supplier.belongsToMany(Item, { 
   through: SupplierItem, 
   foreignKey: 'supplierId', 

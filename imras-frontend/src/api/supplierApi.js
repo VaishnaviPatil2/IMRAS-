@@ -1,10 +1,10 @@
-import axios from "./axios"; // ✅ keep same axios instance
+import axios from "./axios";
 
-// 📦 Get all suppliers (Any logged-in user)
+// Get all suppliers
 export const fetchSuppliers = async (params = {}) => {
   try {
     const res = await axios.get("/suppliers", { params });
-    console.log('🏪 Raw supplier API response:', res.data);
+    console.log('Raw supplier API response:', res.data);
     
     // Handle the API response format: { suppliers: [...], totalSuppliers: n, ... }
     return {
@@ -14,12 +14,12 @@ export const fetchSuppliers = async (params = {}) => {
       currentPage: res.data.currentPage
     };
   } catch (err) {
-    console.error("❌ Error fetching suppliers:", err);
+    console.error("Error fetching suppliers:", err);
     throw err?.response?.data || err;
   }
 };
 
-// ➕ Add supplier (Admin only)
+// Add supplier
 export const createSupplier = async (data) => {
   try {
     const res = await axios.post("/suppliers/add", data);
@@ -30,7 +30,7 @@ export const createSupplier = async (data) => {
   }
 };
 
-// ✏️ Update supplier (Admin only)
+// Update supplier
 export const updateSupplier = async (id, data) => {
   try {
     const res = await axios.put(`/suppliers/update/${id}`, data);
@@ -41,7 +41,7 @@ export const updateSupplier = async (id, data) => {
   }
 };
 
-// 🗑 Delete supplier (Admin only)
+// Delete supplier
 export const deleteSupplier = async (id) => {
   try {
     const res = await axios.delete(`/suppliers/delete/${id}`);
@@ -52,7 +52,7 @@ export const deleteSupplier = async (id) => {
   }
 };
 
-// 📋 Get single supplier
+// Get single supplier
 export const getSupplier = async (id) => {
   try {
     const res = await axios.get(`/suppliers/${id}`);
@@ -63,7 +63,7 @@ export const getSupplier = async (id) => {
   }
 };
 
-// 🔑 Reset supplier password (Admin only)
+// Reset supplier password
 export const resetSupplierPassword = async (id) => {
   try {
     console.log('API: Resetting password for supplier ID:', id); // Debug log

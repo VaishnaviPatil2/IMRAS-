@@ -17,9 +17,9 @@ const sendEmail = async (to, subject, content, isHTML = false) => {
       ...(isHTML ? { html: content } : { text: content })
     });
 
-    console.log(`✅ Email sent to ${to}`);
+    console.log(`Email sent to ${to}`);
   } catch (err) {
-    console.error("❌ Email sending failed:", err);
+    console.error("Email sending failed:", err);
   }
 };
 

@@ -1,7 +1,7 @@
 const { GRN, PurchaseOrder, Item, Warehouse, User, StockLocation } = require('../models');
 const sendEmail = require('../utils/sendEmail');
 
-// Create GRN (Warehouse Staff)
+// Create GRN
 exports.createGRN = async (req, res) => {
   try {
     const { poId, quantityReceived, batchNumber, expiryDate, notes } = req.body;
@@ -122,7 +122,7 @@ exports.createGRN = async (req, res) => {
   }
 };
 
-// Approve/Reject GRN (Inventory Manager)
+// Approve GRN
 exports.approveGRN = async (req, res) => {
   try {
     const { id } = req.params;
@@ -184,8 +184,8 @@ exports.approveGRN = async (req, res) => {
           currentStock: newStock
         });
         
-        console.log(`📦 GRN Stock Update: ${grn.item.name} at ${grn.warehouse.name}: ${oldStock} → ${newStock} (+${grn.quantityReceived})`);
-        console.log(`🎯 STOCK ADDITION VISIBLE IN: Dashboard → Stock Alerts, Stock Warehouse → Updated levels`);
+        console.log(`GRN Stock Update: ${grn.item.name} at ${grn.warehouse.name}: ${oldStock} → ${newStock} (+${grn.quantityReceived})`);
+        console.log(`STOCK ADDITION VISIBLE IN: Dashboard → Stock Alerts, Stock Warehouse → Updated levels`);
       } else {
         // Create new stock location if doesn't exist
         await StockLocation.create({
@@ -196,29 +196,29 @@ exports.approveGRN = async (req, res) => {
           maxStock: 100
         });
         
-        console.log(`📦 GRN New Stock Location: ${grn.item.name} at ${grn.warehouse.name}: 0 → ${grn.quantityReceived}`);
-        console.log(`🎯 NEW STOCK LOCATION VISIBLE IN: Dashboard → Stock Alerts, Stock Warehouse → New entry`);
+        console.log(`GRN New Stock Location: ${grn.item.name} at ${grn.warehouse.name}: 0 → ${grn.quantityReceived}`);
+        console.log(`NEW STOCK LOCATION VISIBLE IN: Dashboard → Stock Alerts, Stock Warehouse → New entry`);
       }
 
-      // 🚀 TRIGGER AUTOMATIC SYSTEM AFTER GRN STOCK UPDATE
+      // Trigger automatic system after GRN stock update
       try {
         const AutomaticTriggerService = require('../services/automaticTriggerService');
         
         // Run automatic check in background (don't wait for it)
         setTimeout(async () => {
-          console.log('🔄 Triggering automatic check after GRN stock update...');
+          console.log('Triggering automatic check after GRN stock update...');
           await AutomaticTriggerService.executeAutomaticCheck();
         }, 2000); // 2 second delay to ensure all updates are committed
         
       } catch (triggerError) {
-        console.error('⚠️ Failed to trigger automatic check after GRN:', triggerError.message);
+        console.error('Failed to trigger automatic check after GRN:', triggerError.message);
         // Don't fail the GRN if automatic trigger fails
       }
 
       // Update PO status to completed
       await grn.purchaseOrder.update({ status: 'completed' });
 
-      console.log(`✅ GRN ${grn.grnNumber} approved - Stock updated for ${grn.item.name}`);
+      console.log(`GRN ${grn.grnNumber} approved - Stock updated for ${grn.item.name}`);
 
     } else if (action === 'reject') {
       // Reject GRN
@@ -232,7 +232,7 @@ exports.approveGRN = async (req, res) => {
       // Set PO status to cancelled (since rejected is not available in PO enum)
       await grn.purchaseOrder.update({ status: 'cancelled' });
 
-      console.log(`❌ GRN ${grn.grnNumber} rejected by ${req.user.name} - PO marked as cancelled`);
+      console.log(`GRN ${grn.grnNumber} rejected by ${req.user.name} - PO marked as cancelled`);
 
     } else {
       return res.status(400).json({

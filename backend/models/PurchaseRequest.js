@@ -133,7 +133,7 @@ const PurchaseRequest = sequelize.define('PurchaseRequest', {
             }
           }
         } catch (error) {
-          console.error('❌ Error in beforeCreate hook:', error);
+          console.error('Error in beforeCreate hook:', error);
           // Fallback to timestamp-based number
           pr.prNumber = `PR${Date.now()}`;
         }

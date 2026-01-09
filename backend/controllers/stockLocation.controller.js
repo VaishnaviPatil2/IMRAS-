@@ -1,9 +1,7 @@
 const { StockLocation, Warehouse, Item, Category, User, sequelize } = require("../models");
 const { Op } = require("sequelize");
 
-// =========================
-// HELPER FUNCTION: Calculate Effective Reorder Threshold
-// =========================
+// Calculate effective reorder threshold
 const calculateEffectiveReorderThreshold = (stockLocation, item) => {
   // Use reorderPoint directly as it already includes safetyStock in scientific formula
   const itemReorderThreshold = item.reorderPoint || 0;
@@ -12,9 +10,7 @@ const calculateEffectiveReorderThreshold = (stockLocation, item) => {
   return Math.max(stockLocation.minStock || 0, itemReorderThreshold);
 };
 
-// =========================
-// HELPER FUNCTION: Determine Stock Status (Updated with very_low_stock)
-// =========================
+// Determine stock status
 const getStockStatus = (stockLocation, item) => {
   const currentStock = stockLocation.currentStock || 0;
   const effectiveMinimum = calculateEffectiveReorderThreshold(stockLocation, item);
@@ -30,9 +26,7 @@ const getStockStatus = (stockLocation, item) => {
   }
 };
 
-// =========================
-// GET ALL STOCK LOCATIONS
-// =========================
+// Get all stock locations
 exports.getAllStockLocations = async (req, res) => {
   try {
     const { 
@@ -160,9 +154,7 @@ exports.getAllStockLocations = async (req, res) => {
   }
 };
 
-// =========================
-// GET STOCK LOCATION BY ID
-// =========================
+// Get stock location by ID
 exports.getStockLocationById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -196,9 +188,7 @@ exports.getStockLocationById = async (req, res) => {
   }
 };
 
-// =========================
-// CREATE STOCK LOCATION (WAREHOUSE/ADMIN)
-// =========================
+// Create stock location
 exports.createStockLocation = async (req, res) => {
   try {
     console.log('Create stock location request:', req.body);
@@ -349,24 +339,24 @@ exports.createStockLocation = async (req, res) => {
       ]
     });
 
-    // 🚀 TRIGGER AUTOMATIC SYSTEM AFTER STOCK LOCATION CREATION
+    // Trigger automatic system after stock location creation
     let automaticTriggerResult = null;
     if (parsedCurrentStock !== undefined) {
-      console.log(`📦 New stock location created: ${locationCode} with ${parsedCurrentStock} stock`);
+      console.log(`New stock location created: ${locationCode} with ${parsedCurrentStock} stock`);
       
       // Trigger automatic check SYNCHRONOUSLY
       try {
         const AutomaticTriggerService = require('../services/automaticTriggerService');
         
-        console.log('🔄 Triggering automatic check after stock location creation...');
+        console.log('Triggering automatic check after stock location creation...');
         automaticTriggerResult = await AutomaticTriggerService.executeAutomaticCheck();
         
         if (automaticTriggerResult && automaticTriggerResult.prsCreated > 0) {
-          console.log(`✅ Automatic trigger created ${automaticTriggerResult.prsCreated} PRs`);
+          console.log(`Automatic trigger created ${automaticTriggerResult.prsCreated} PRs`);
         }
         
       } catch (triggerError) {
-        console.error('⚠️ Failed to trigger automatic check:', triggerError.message);
+        console.error('Failed to trigger automatic check:', triggerError.message);
         // Don't fail the stock creation if automatic trigger fails
       }
     }
@@ -388,9 +378,7 @@ exports.createStockLocation = async (req, res) => {
   }
 };
 
-// =========================
-// UPDATE STOCK LOCATION (WAREHOUSE/ADMIN)
-// =========================
+// Update stock location
 exports.updateStockLocation = async (req, res) => {
   try {
     if (!['warehouse', 'admin'].includes(req.user.role)) {
@@ -437,24 +425,24 @@ exports.updateStockLocation = async (req, res) => {
       updatedById: req.user.id
     });
 
-    // 🚀 TRIGGER AUTOMATIC SYSTEM AFTER STOCK UPDATE
+    // Trigger automatic system after stock update
     let automaticTriggerResult = null;
     if (currentStock !== undefined) {
-      console.log(`📦 Stock updated for ${stockLocation.locationCode}: ${stockLocation.currentStock} → ${newCurrentStock}`);
+      console.log(`Stock updated for ${stockLocation.locationCode}: ${stockLocation.currentStock} → ${newCurrentStock}`);
       
       // Trigger automatic check SYNCHRONOUSLY so frontend gets immediate feedback
       try {
         const AutomaticTriggerService = require('../services/automaticTriggerService');
         
-        console.log('🔄 Triggering automatic check after stock update...');
+        console.log('Triggering automatic check after stock update...');
         automaticTriggerResult = await AutomaticTriggerService.executeAutomaticCheck();
         
         if (automaticTriggerResult && automaticTriggerResult.prsCreated > 0) {
-          console.log(`✅ Automatic trigger created ${automaticTriggerResult.prsCreated} PRs`);
+          console.log(`Automatic trigger created ${automaticTriggerResult.prsCreated} PRs`);
         }
         
       } catch (triggerError) {
-        console.error('⚠️ Failed to trigger automatic check:', triggerError.message);
+        console.error('Failed to trigger automatic check:', triggerError.message);
         // Don't fail the stock update if automatic trigger fails
       }
     }
@@ -492,9 +480,7 @@ exports.updateStockLocation = async (req, res) => {
   }
 };
 
-// =========================
-// DELETE STOCK LOCATION (ADMIN ONLY)
-// =========================
+// Delete stock location
 exports.deleteStockLocation = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -523,9 +509,7 @@ exports.deleteStockLocation = async (req, res) => {
   }
 };
 
-// =========================
-// GET LOW STOCK ITEMS
-// =========================
+// Get low stock items
 exports.getLowStockItems = async (req, res) => {
   try {
     // Get all active stock locations with their items

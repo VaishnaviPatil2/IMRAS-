@@ -133,7 +133,7 @@ const GRN = sequelize.define('GRN', {
             }
           }
         } catch (error) {
-          console.error('❌ Error in GRN beforeCreate hook:', error);
+          console.error('Error in GRN beforeCreate hook:', error);
           // Fallback to timestamp-based number
           grn.grnNumber = `GRN${Date.now()}`;
         }

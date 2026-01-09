@@ -1,9 +1,7 @@
 const { Category, Item } = require("../models");
 const { Op } = require("sequelize");
 
-// =========================
-// GET ALL CATEGORIES
-// =========================
+// Get all categories
 exports.getAllCategories = async (req, res) => {
   try {
     const { active = 'true', includeItemCount = 'false' } = req.query;
@@ -41,9 +39,7 @@ exports.getAllCategories = async (req, res) => {
   }
 };
 
-// =========================
-// GET CATEGORY BY ID
-// =========================
+// Get category by ID
 exports.getCategoryById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -69,9 +65,7 @@ exports.getCategoryById = async (req, res) => {
   }
 };
 
-// =========================
-// CREATE CATEGORY (ADMIN ONLY)
-// =========================
+// Create category
 exports.createCategory = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -108,9 +102,7 @@ exports.createCategory = async (req, res) => {
   }
 };
 
-// =========================
-// UPDATE CATEGORY (ADMIN ONLY)
-// =========================
+// Update category
 exports.updateCategory = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -155,9 +147,7 @@ exports.updateCategory = async (req, res) => {
   }
 };
 
-// =========================
-// DELETE CATEGORY (ADMIN ONLY)
-// =========================
+// Delete category
 exports.deleteCategory = async (req, res) => {
   try {
     if (req.user.role !== "admin") {

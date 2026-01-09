@@ -18,14 +18,6 @@ export const loginUser = async (email, password) => {
   }
 };
 
-export const registerUser = async (userData) => {
-  try {
-    const response = await axios.post(`${API_URL}/register`, userData);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || { message: "Registration failed" };
-  }
-};
 // User Management APIs (Admin only)
 export const getAllUsers = async () => {
   try {

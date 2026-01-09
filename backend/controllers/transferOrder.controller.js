@@ -39,9 +39,7 @@ const getStockStatus = (stockLocation, item) => {
   }
 };
 
-// =========================
-// GET ALL TRANSFER ORDERS
-// =========================
+// Get all transfer orders
 exports.getAllTransferOrders = async (req, res) => {
   try {
     const { 
@@ -188,9 +186,7 @@ exports.getAllTransferOrders = async (req, res) => {
   }
 };
 
-// =========================
-// GET TRANSFER ORDER BY ID
-// =========================
+// Get transfer order by id
 exports.getTransferOrderById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -224,9 +220,7 @@ exports.getTransferOrderById = async (req, res) => {
   }
 };
 
-// =========================
-// CREATE TRANSFER ORDER (WAREHOUSE ROLE)
-// =========================
+// Create transfer order (Warehouse role)
 exports.createTransferOrder = async (req, res) => {
   try {
     if (!['warehouse', 'admin'].includes(req.user.role)) {
@@ -347,9 +341,7 @@ exports.createTransferOrder = async (req, res) => {
   }
 };
 
-// =========================
-// UPDATE TRANSFER ORDER (WAREHOUSE ROLE) - ONLY FOR PENDING ORDERS
-// =========================
+// Update transfer order (Warehouse role)
 exports.updateTransferOrder = async (req, res) => {
   try {
     if (!['warehouse', 'admin'].includes(req.user.role)) {
@@ -419,9 +411,7 @@ exports.updateTransferOrder = async (req, res) => {
   }
 };
 
-// =========================
-// SUBMIT TRANSFER ORDER FOR APPROVAL (WAREHOUSE ROLE)
-// =========================
+// Submit transfer order for approval
 exports.submitTransferOrder = async (req, res) => {
   try {
     if (!['warehouse', 'admin'].includes(req.user.role)) {
@@ -481,12 +471,10 @@ exports.submitTransferOrder = async (req, res) => {
   }
 };
 
-// =========================
-// APPROVE/REJECT TRANSFER ORDER (MANAGER/ADMIN ONLY)
-// =========================
+// Approve transfer order
 exports.approveTransferOrder = async (req, res) => {
   try {
-    console.log('🔍 Approve Transfer Order Request:', {
+    console.log('Approve Transfer Order Request:', {
       userId: req.user.id,
       userRole: req.user.role,
       transferOrderId: req.params.id,
@@ -501,7 +489,7 @@ exports.approveTransferOrder = async (req, res) => {
     const { id } = req.params;
     const { action, approvedQuantity, notes } = req.body;
 
-    console.log('📋 Processing action:', action, 'for transfer order:', id);
+    console.log('Processing action:', action, 'for transfer order:', id);
 
     if (!['approve', 'reject'].includes(action)) {
       return res.status(400).json({ error: "Action must be 'approve' or 'reject'" });
@@ -512,7 +500,7 @@ exports.approveTransferOrder = async (req, res) => {
       return res.status(404).json({ error: "Transfer order not found" });
     }
 
-    console.log('📦 Transfer Order Status:', {
+    console.log('Transfer Order Status:', {
       status: transferOrder.status,
       submittedForApproval: transferOrder.submittedForApproval,
       requestedQuantity: transferOrder.requestedQuantity
@@ -556,7 +544,7 @@ exports.approveTransferOrder = async (req, res) => {
         approvedAt: new Date(),
         notes: notes || 'Approved by ' + (req.user.role === 'admin' ? 'admin' : 'manager')
       });
-      console.log('✅ Transfer Order approved:', id, 'Quantity:', parsedApprovedQuantity);
+      console.log('Transfer Order approved:', id, 'Quantity:', parsedApprovedQuantity);
     } else {
       // Rejection logic
       await transferOrder.update({
@@ -565,7 +553,7 @@ exports.approveTransferOrder = async (req, res) => {
         approvedAt: new Date(),
         notes: notes || 'Rejected by ' + (req.user.role === 'admin' ? 'admin' : 'manager')
       });
-      console.log('❌ Transfer Order rejected:', id);
+      console.log('Transfer Order rejected:', id);
     }
 
     const updatedTransferOrder = await TransferOrder.findByPk(id, {
@@ -585,7 +573,7 @@ exports.approveTransferOrder = async (req, res) => {
       ]
     });
 
-    console.log('✅ Transfer Order processed successfully:', action, id);
+    console.log('Transfer Order processed successfully:', action, id);
 
     res.json({
       success: true,
@@ -593,7 +581,7 @@ exports.approveTransferOrder = async (req, res) => {
       transferOrder: updatedTransferOrder
     });
   } catch (error) {
-    console.error("❌ Approve transfer order error:", error);
+    console.error("Approve transfer order error:", error);
     console.error("Error details:", {
       message: error.message,
       stack: error.stack,
@@ -608,9 +596,7 @@ exports.approveTransferOrder = async (req, res) => {
   }
 };
 
-// =========================
-// COMPLETE TRANSFER ORDER (WAREHOUSE ROLE)
-// =========================
+// Complete transfer order
 exports.completeTransferOrder = async (req, res) => {
   try {
     if (!['warehouse'].includes(req.user.role)) {
@@ -756,9 +742,7 @@ exports.completeTransferOrder = async (req, res) => {
   }
 };
 
-// =========================
-// CANCEL TRANSFER ORDER
-// =========================
+// Cancel transfer order
 exports.cancelTransferOrder = async (req, res) => {
   try {
     const { id } = req.params;

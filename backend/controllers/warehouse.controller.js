@@ -1,9 +1,7 @@
 const { Warehouse, User, StockLocation } = require("../models");
 const { Op } = require("sequelize");
 
-// =========================
-// GET ALL WAREHOUSES
-// =========================
+// Get all warehouses
 exports.getAllWarehouses = async (req, res) => {
   try {
     const { active = 'true', includeStockCount = 'false' } = req.query;
@@ -44,9 +42,7 @@ exports.getAllWarehouses = async (req, res) => {
   }
 };
 
-// =========================
-// GET WAREHOUSE BY ID
-// =========================
+// Get warehouse by id
 exports.getWarehouseById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -75,9 +71,7 @@ exports.getWarehouseById = async (req, res) => {
   }
 };
 
-// =========================
-// CREATE WAREHOUSE (ADMIN ONLY)
-// =========================
+// Create warehouse (Admin only)
 exports.createWarehouse = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -130,9 +124,7 @@ exports.createWarehouse = async (req, res) => {
   }
 };
 
-// =========================
-// UPDATE WAREHOUSE (ADMIN ONLY)
-// =========================
+// Update warehouse (Admin only)
 exports.updateWarehouse = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -190,9 +182,7 @@ exports.updateWarehouse = async (req, res) => {
   }
 };
 
-// =========================
-// DELETE WAREHOUSE (ADMIN ONLY)
-// =========================
+// Delete warehouse (Admin only)
 exports.deleteWarehouse = async (req, res) => {
   try {
     if (req.user.role !== "admin") {

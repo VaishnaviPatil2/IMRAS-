@@ -1,9 +1,7 @@
 const { Item, Category, User, Supplier, StockLocation, PurchaseRequest, PurchaseOrder } = require("../models");
 const { Op } = require("sequelize");
 
-// =========================
-// GET ALL ITEMS
-// =========================
+// Get all items
 exports.getAllItems = async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '', category = '', active = 'true' } = req.query;
@@ -62,9 +60,7 @@ exports.getAllItems = async (req, res) => {
   }
 };
 
-// =========================
-// GET ITEM BY ID
-// =========================
+// Get item by id
 exports.getItemById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -89,9 +85,7 @@ exports.getItemById = async (req, res) => {
   }
 };
 
-// =========================
-// CREATE ITEM (ADMIN ONLY)
-// =========================
+// Create item (Admin only)
 exports.createItem = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -157,9 +151,7 @@ exports.createItem = async (req, res) => {
   }
 };
 
-// =========================
-// UPDATE ITEM (ADMIN ONLY)
-// =========================
+// Update item (Admin only)
 exports.updateItem = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -243,9 +235,7 @@ exports.updateItem = async (req, res) => {
   }
 };
 
-// =========================
-// DELETE ITEM (ADMIN ONLY)
-// =========================
+// Delete item
 exports.deleteItem = async (req, res) => {
   try {
     if (req.user.role !== "admin") {

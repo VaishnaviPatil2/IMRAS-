@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const {
-  register,
   login,
   createUserByAdmin,
   updateUserRole,
@@ -9,9 +8,6 @@ const {
   deleteUser
 } = require("../controllers/auth.controller");
 const { verifyAdmin, verifyUser } = require("../middleware/authMiddleware");
-
-// Public registration → disabled (use User Management instead)
-// router.post("/register", register);
 
 // Admin creates user → protected
 router.post("/create", verifyAdmin, createUserByAdmin);

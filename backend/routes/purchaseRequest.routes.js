@@ -4,18 +4,18 @@ const purchaseRequestController = require('../controllers/purchaseRequest.contro
 const { verifyUser, verifyAdminOrManager, verifyWarehouse } = require('../middleware/authMiddleware');
 const { PurchaseRequest } = require('../models');
 
-console.log('🔄 Purchase Request routes loaded');
+console.log('Purchase Request routes loaded');
 
 // Custom middleware for role-based access
 const verifyManagerOrAdminOverride = (req, res, next) => {
-  console.log('🔐 Checking Manager/Admin access...');
+  console.log('Checking Manager/Admin access...');
   console.log('User from token:', req.user);
   
   if (req.user.role === 'manager' || req.user.role === 'admin') {
-    console.log('✅ Access granted for role:', req.user.role);
+    console.log('Access granted for role:', req.user.role);
     next();
   } else {
-    console.log('❌ Access denied for role:', req.user.role);
+    console.log('Access denied for role:', req.user.role);
     res.status(403).json({ success: false, message: 'Only inventory managers and admin can perform this action' });
   }
 };
@@ -31,7 +31,7 @@ const verifyAdminManagerOrWarehouse = (req, res, next) => {
 const verifyAdminOverride = (req, res, next) => {
   if (req.user.role === 'admin') {
     // Log admin override action
-    console.log(`🚨 Admin Override: ${req.user.name} (${req.user.email}) performed ${req.method} ${req.originalUrl}`);
+    console.log(`Admin Override: ${req.user.name} (${req.user.email}) performed ${req.method} ${req.originalUrl}`);
     next();
   } else {
     res.status(403).json({ success: false, message: 'Admin override required for this action' });

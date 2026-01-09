@@ -4,16 +4,16 @@ const API_URL = "/api/dashboard";
 
 export const fetchDashboardData = async () => {
   try {
-    console.log("🔄 Starting dashboard API call...");
+    console.log("Starting dashboard API call...");
     
     const token = localStorage.getItem("token");
-    console.log("🔑 Token:", token ? "Present" : "Missing");
+    console.log("Token:", token ? "Present" : "Missing");
     
     if (!token) {
       throw new Error("No authentication token found");
     }
     
-    console.log("📡 Making request to:", API_URL);
+    console.log("Making request to:", API_URL);
     
     const response = await axios.get(API_URL, {
       headers: { 
@@ -23,12 +23,12 @@ export const fetchDashboardData = async () => {
       timeout: 15000 // 15 second timeout
     });
     
-    console.log("✅ Dashboard API response received:", response.status);
-    console.log("📊 Data keys:", Object.keys(response.data));
+    console.log("Dashboard API response received:", response.status);
+    console.log("Data keys:", Object.keys(response.data));
     
     return response.data;
   } catch (error) {
-    console.error("❌ Dashboard API error:", error);
+    console.error("Dashboard API error:", error);
     
     if (error.code === 'ECONNABORTED') {
       throw { message: "Request timeout - server may be slow" };

@@ -5,7 +5,7 @@ const { Op } = require("sequelize");
 const bcrypt = require("bcryptjs");
 const { verifyAdmin, verifyUser} = require("../middleware/authMiddleware");
 
-// ➕ Add new supplier (Admin only)
+// Add new supplier
 router.post("/add", verifyAdmin, async (req, res) => {
   try {
     const { name, email, contactNumber, address, leadTimeDays, pricingTier } = req.body;
@@ -63,7 +63,7 @@ router.post("/add", verifyAdmin, async (req, res) => {
   }
 });
 
-// 🔄 Update supplier (Admin only)
+// Update supplier
 router.put("/update/:id", verifyAdmin, async (req, res) => {
   try {
     const { name, email, contactNumber, address, leadTimeDays, pricingTier } = req.body;
@@ -115,7 +115,7 @@ router.put("/update/:id", verifyAdmin, async (req, res) => {
   }
 });
 
-// 🗑 Delete supplier (Admin only)
+// Delete supplier
 router.delete("/delete/:id", verifyAdmin, async (req, res) => {
   try {
     const supplier = await Supplier.findByPk(req.params.id);
@@ -142,7 +142,7 @@ router.delete("/delete/:id", verifyAdmin, async (req, res) => {
   }
 });
 
-// 📦 Get all suppliers (Logged-in users)
+// Get all suppliers
 router.get("/", verifyUser, async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '', active = 'true' } = req.query;
@@ -180,7 +180,7 @@ router.get("/", verifyUser, async (req, res) => {
 
 
 
-// 🔧 Fix admin user (No auth required - emergency route)
+// Fix admin user
 router.post("/fix-admin", async (req, res) => {
   try {
     console.log('Backend: Fix admin route hit');
@@ -197,12 +197,12 @@ router.post("/fix-admin", async (req, res) => {
         password: hashedPassword,
         role: "admin"
       });
-      console.log("✅ Admin user created");
+      console.log("Admin user created");
     } else {
       // Reset admin password if exists
       const hashedPassword = await bcrypt.hash("adminpassword", 10);
       await admin.update({ password: hashedPassword });
-      console.log("✅ Admin password reset");
+      console.log("Admin password reset");
     }
     
     res.json({
@@ -217,7 +217,7 @@ router.post("/fix-admin", async (req, res) => {
   }
 });
 
-// 🔍 Diagnostic route to check supplier data consistency (Admin only)
+// Diagnostic route to check supplier data consistency
 router.get("/diagnose", verifyAdmin, async (req, res) => {
   try {
     console.log('Backend: Diagnose route hit');
@@ -286,7 +286,7 @@ router.get("/diagnose", verifyAdmin, async (req, res) => {
 
 
 
-// 🔑 Reset supplier password (Admin only) - MUST BE BEFORE /:id route
+// Reset supplier password
 router.post("/reset-password/:id", verifyAdmin, async (req, res) => {
   try {
     console.log('Backend: Reset password route hit with ID:', req.params.id); // Debug log
@@ -342,7 +342,7 @@ router.post("/reset-password/:id", verifyAdmin, async (req, res) => {
   }
 });
 
-// 📋 Get single supplier (Logged-in users) - MUST BE LAST among specific routes
+// Get single supplier
 router.get("/:id", verifyUser, async (req, res) => {
   try {
     const supplier = await Supplier.findByPk(req.params.id, {
@@ -361,7 +361,7 @@ router.get("/:id", verifyUser, async (req, res) => {
   }
 });
 
-// 🧹 Clean up supplier data inconsistencies (Admin only)
+// Clean up supplier data inconsistencies
 router.post("/cleanup", verifyAdmin, async (req, res) => {
   try {
     console.log('Backend: Cleanup route hit');
