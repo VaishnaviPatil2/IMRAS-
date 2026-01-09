@@ -1,4 +1,4 @@
-# IMRAS - Inventory Management & Resource Allocation System
+# IMRAS - Inventory Management & Reorder Atomation System
 
 A comprehensive full-stack inventory management system built with React.js, Node.js, Express.js, and PostgreSQL. IMRAS provides automated stock monitoring, purchase request management, supplier coordination, and real-time dashboard analytics.
 
