@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 // Admin-only
 const verifyAdmin = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
+  console.log(token);
   if (!token) return res.status(401).json({ message: "No token provided" });
 
   try {
@@ -20,6 +21,7 @@ const verifyAdmin = (req, res, next) => {
 // Admin or Manager
 const verifyAdminOrManager = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
+  console.log(token);
   if (!token) return res.status(401).json({ message: "No token provided" });
 
   try {
@@ -37,6 +39,7 @@ const verifyAdminOrManager = (req, res, next) => {
 // Any authenticated user
 const verifyUser = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
+  console.log(token);
   if (!token) return res.status(401).json({ message: "No token provided" });
 
   try {
@@ -51,8 +54,9 @@ const verifyUser = (req, res, next) => {
 // Supplier-only
 const verifySupplier = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
+  console.log(token);
   if (!token) return res.status(401).json({ message: "No token provided" });
-
+  
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (decoded.role !== "supplier") {
@@ -68,6 +72,7 @@ const verifySupplier = (req, res, next) => {
 // Warehouse-only
 const verifyWarehouse = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
+  console.log(token);
   if (!token) return res.status(401).json({ message: "No token provided" });
 
   try {
@@ -85,6 +90,7 @@ const verifyWarehouse = (req, res, next) => {
 // Manager-only
 const verifyManager = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
+  console.log(token);
   if (!token) return res.status(401).json({ message: "No token provided" });
 
   try {
@@ -102,6 +108,7 @@ const verifyManager = (req, res, next) => {
 // Manager or Admin with override
 const verifyManagerOrAdminOverride = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
+  console.log(token);
   if (!token) return res.status(401).json({ message: "No token provided" });
 
   try {
