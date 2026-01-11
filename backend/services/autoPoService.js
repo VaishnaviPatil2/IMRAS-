@@ -294,13 +294,9 @@ async function getLowStockSummary() {
     throw error;
   }
 }
-
-// Legacy method for backward compatibility
 async function checkLowStockAndGeneratePO() {
   return await checkLowStockAndGeneratePR();
 }
-
-// Export functions
 module.exports = {
   checkLowStockAndGeneratePR,
   checkLowStockAndGeneratePO,
